@@ -251,6 +251,19 @@ def average_nonzero_depth(images):
     return mean
 
 
+def create_coord_pairs(width, height):
+    # Create all coordinate pairs
+    x = tf.range(width)
+    y = tf.range(height)
+    xx, yy = tf.meshgrid(x, y, indexing='ij')
+    xx = tf.reshape(xx, [-1])
+    yy = tf.reshape(yy, [-1])
+    # Stack along a new axis to create pairs in the last dimension
+    coords = tf.stack([xx, yy], axis=-1)
+    coords = tf.cast(coords, tf.float32)  # [im_width * im_height, 2]
+    return coords
+
+
 if __name__ == "__main__":
     # Check bilinear nearest resizing
     im = tf.zeros([5, 194, 195, 1])

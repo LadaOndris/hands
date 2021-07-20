@@ -4,6 +4,7 @@ from scipy import stats
 from skimage import filters
 
 from src.utils.camera import Camera
+from src.utils.imaging import create_coord_pairs
 from src.utils.plots import plot_depth_image, plot_depth_image_histogram
 
 
@@ -120,14 +121,7 @@ class ComPreprocessor:
 
         # Create all coordinate pairs
         im_width, im_height = tf.shape(image)[:2]
-        x = tf.range(im_width)
-        y = tf.range(im_height)
-        xx, yy = tf.meshgrid(x, y, indexing='ij')
-        xx = tf.reshape(xx, [-1])
-        yy = tf.reshape(yy, [-1])
-        # Stack along a new axis to create pairs in the last dimension
-        coords = tf.stack([xx, yy], axis=-1)
-        coords = tf.cast(coords, tf.float32)  # [im_width * im_height, 2]
+        coords = create_coord_pairs(im_width, im_height)
 
         image_mask = tf.cast(image > 0., dtype=tf.float32)
         image_mask_flat = tf.reshape(image_mask, [im_width * im_height, 1])

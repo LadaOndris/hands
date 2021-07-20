@@ -2,7 +2,7 @@ import argparse
 
 from src.acceptance.gesture_acceptance_result import GestureAcceptanceResult
 from src.datasets.generators import get_source_generator
-from src.system.gesture_recognizer import GestureRecognizer
+from src.system.demo import GestureRecognizer
 
 
 def print_result(result: GestureAcceptanceResult):
@@ -48,3 +48,4 @@ live_acceptance = GestureRecognizer(error_thresh=args.error_threshold,
 recognizer = live_acceptance.start(image_source)
 for result in recognizer:
     print_result(result)
+    print()
