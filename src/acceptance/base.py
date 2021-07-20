@@ -12,6 +12,13 @@ def _upper_tri(A):
     mask = r[:, None] < r
     return A[..., mask]
 
+def _upper_tri_with_channels(A):
+    """
+    Returns an upper triangle of a given matrix.
+    """
+    r = np.arange(A.shape[A.ndim - 2])
+    mask = r[:, None] < r
+    return A[..., mask, :]
 
 def relative_distance(hand: np.ndarray) -> np.ndarray:
     a = np.subtract.outer(hand, hand)
@@ -35,10 +42,12 @@ def distance_matrix(a):
         diff[x, :, :] = np.sum(np.abs(d ** 2), axis=-1)
     return diff ** 0.5
 
+
 def scaled_distance_matrix(hand):
     a = distance_matrix(hand).astype(np.float16)
     a *= get_scale_factors(a)[:, np.newaxis, np.newaxis]
     return a
+
 
 def relative_distance_matrix(hand1: np.ndarray, hand2: np.ndarray) -> np.ndarray:
     if hand1.ndim != 3 or hand2.ndim != 3:
@@ -49,6 +58,22 @@ def relative_distance_matrix(hand1: np.ndarray, hand2: np.ndarray) -> np.ndarray
     diff_matrix = a[:, np.newaxis, :, :] - b[np.newaxis, ...]
     return diff_matrix
 
+def hand_pose_angles(joints):
+    vectors_matrix = joints[:, np.newaxis, :, :] - joints[:, :, np.newaxis, :]
+    vectors = _upper_tri_with_channels(vectors_matrix)
+
+    """
+    vectors1 = vectors[:, np.newaxis, :, :]
+    vectors1 = np.tile(vectors1, (1, 210, 1, 1))
+    vectors1 = np.reshape(vectors1, (-1, 210 * 210, 3))
+    vectors2 = vectors[:, :, np.newaxis, :]
+    vectors2 = np.tile(vectors2, (1, 1, 210, 1))
+    vectors2 = np.reshape(vectors2, (-1, 210 * 210, 3))
+    """
+    v1 = vectors[...]
+    v2 = vectors[...]
+    angles = vectors_angle_batch(v1, v2)
+    return angles
 
 def get_scale_factors(distance_matrix, standard_finger_length=65.):
     """
@@ -226,6 +251,11 @@ def vectors_angle(v1, v2):
     v2 = unit_vector(v2)
     return np.arccos(np.clip(np.dot(v1, v2), -1.0, 1.0))
 
+def vectors_angle_batch(v1, v2):
+    v1 = unit_vector(v1)
+    v2 = unit_vector(v2)
+    v2 = np.transpose(v2, [0, 2, 1])
+    return np.arccos(np.clip(np.matmul(v1, v2), -1.0, 1.0))
 
 def fingers_length(joints):
     """
