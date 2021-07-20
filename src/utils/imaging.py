@@ -227,6 +227,30 @@ def read_image_from_file(image_file_path, dtype, shape):
     return depth_image
 
 
+def average_nonzero_depth(images):
+    """
+    Computes the average pixel value
+
+    Parameters
+    ----------
+    images
+        A 4-D Tensor of shape [batch, height, width, 1].
+
+    Returns
+    -------
+    depths
+        A 1-D Tensor of shape [batch].
+    """
+    if tf.rank(images) != 4:
+        raise TypeError(F"Invalid rank: {tf.rank(images)}, expeceted 4.")
+
+    axes = [1, 2, 3]
+    sums = tf.math.reduce_sum(images, axis=axes)
+    counts = tf.math.count_nonzero(images, axis=axes, dtype=sums.dtype)
+    mean = sums / counts
+    return mean
+
+
 if __name__ == "__main__":
     # Check bilinear nearest resizing
     im = tf.zeros([5, 194, 195, 1])
