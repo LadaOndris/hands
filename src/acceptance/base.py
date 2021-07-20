@@ -35,15 +35,17 @@ def distance_matrix(a):
         diff[x, :, :] = np.sum(np.abs(d ** 2), axis=-1)
     return diff ** 0.5
 
+def scaled_distance_matrix(hand):
+    a = distance_matrix(hand).astype(np.float16)
+    a *= get_scale_factors(a)[:, np.newaxis, np.newaxis]
+    return a
 
 def relative_distance_matrix(hand1: np.ndarray, hand2: np.ndarray) -> np.ndarray:
     if hand1.ndim != 3 or hand2.ndim != 3:
         raise ValueError(F"Expected dimension is 3, but is {hand1.ndim} and {hand2.ndim}")
 
-    a = distance_matrix(hand1).astype(np.float16)
-    b = distance_matrix(hand2).astype(np.float16)
-    a *= get_scale_factors(a)[:, np.newaxis, np.newaxis]
-    b *= get_scale_factors(b)[:, np.newaxis, np.newaxis]
+    a = scaled_distance_matrix(hand1)
+    b = scaled_distance_matrix(hand2)
     diff_matrix = a[:, np.newaxis, :, :] - b[np.newaxis, ...]
     return diff_matrix
 
