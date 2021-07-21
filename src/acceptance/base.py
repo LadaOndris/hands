@@ -12,6 +12,7 @@ def _upper_tri(A):
     mask = r[:, None] < r
     return A[..., mask]
 
+
 def _upper_tri_with_channels(A):
     """
     Returns an upper triangle of a given matrix.
@@ -19,6 +20,7 @@ def _upper_tri_with_channels(A):
     r = np.arange(A.shape[A.ndim - 2])
     mask = r[:, None] < r
     return A[..., mask, :]
+
 
 def relative_distance(hand: np.ndarray) -> np.ndarray:
     a = np.subtract.outer(hand, hand)
@@ -58,22 +60,27 @@ def relative_distance_matrix(hand1: np.ndarray, hand2: np.ndarray) -> np.ndarray
     diff_matrix = a[:, np.newaxis, :, :] - b[np.newaxis, ...]
     return diff_matrix
 
-def hand_pose_angles(joints):
-    vectors_matrix = joints[:, np.newaxis, :, :] - joints[:, :, np.newaxis, :]
-    vectors = _upper_tri_with_channels(vectors_matrix)
 
-    """
-    vectors1 = vectors[:, np.newaxis, :, :]
-    vectors1 = np.tile(vectors1, (1, 210, 1, 1))
-    vectors1 = np.reshape(vectors1, (-1, 210 * 210, 3))
-    vectors2 = vectors[:, :, np.newaxis, :]
-    vectors2 = np.tile(vectors2, (1, 1, 210, 1))
-    vectors2 = np.reshape(vectors2, (-1, 210 * 210, 3))
-    """
+def hand_pose_angles(joints):
+    vectors = vectors_from_joints(joints)
     v1 = vectors[...]
     v2 = vectors[...]
-    angles = vectors_angle_batch(v1, v2)
+    angles = vectors_angle(v1, v2)
     return angles
+
+
+def viewpoint_angles(joints):
+    vectors = vectors_from_joints(joints)
+    world_space_basis = np.array([[1, 0, 0], [0, 1, 0], [0, 0, 1]])
+    angles = vectors_angle(vectors, world_space_basis)
+    return angles
+
+
+def vectors_from_joints(joints):
+    vectors_matrix = joints[:, np.newaxis, :, :] - joints[:, :, np.newaxis, :]
+    vectors = _upper_tri_with_channels(vectors_matrix)
+    return vectors
+
 
 def get_scale_factors(distance_matrix, standard_finger_length=65.):
     """
@@ -240,7 +247,8 @@ def joint_relation_errors(hands1: np.ndarray, hands2: np.ndarray, relative_dista
 
 def unit_vector(vector):
     """ Returns the unit vector of the vector.  """
-    return vector / np.linalg.norm(vector)
+    # Compute the norm along the last axis (the 3D coords)
+    return vector / np.linalg.norm(vector, axis=-1)[..., np.newaxis]
 
 
 def vectors_angle(v1, v2):
@@ -249,13 +257,10 @@ def vectors_angle(v1, v2):
     """
     v1 = unit_vector(v1)
     v2 = unit_vector(v2)
-    return np.arccos(np.clip(np.dot(v1, v2), -1.0, 1.0))
-
-def vectors_angle_batch(v1, v2):
-    v1 = unit_vector(v1)
-    v2 = unit_vector(v2)
-    v2 = np.transpose(v2, [0, 2, 1])
+    if v2.ndim > 1:
+        v2 = np.swapaxes(v2, v2.ndim - 1, v2.ndim - 2)
     return np.arccos(np.clip(np.matmul(v1, v2), -1.0, 1.0))
+
 
 def fingers_length(joints):
     """
