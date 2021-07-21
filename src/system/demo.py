@@ -76,21 +76,39 @@ class GestureRecognizer:
             mean_depth = average_nonzero_depth(image_subregion[tf.newaxis, ...])[0]
             tf.print(F"Depth: {mean_depth / 10:.0f} cm")
 
-            self.fit_plane_through_hand(image_subregion)
-            self.plot(acceptance_result, image_subregion, joints_subregion)
+            norm, mean = self.fit_plane_through_hand(image_subregion)
+            # norm, mean = None, None
+            self.plot(acceptance_result, image_subregion, joints_subregion, norm, mean)
 
             image_idx += 1
             yield acceptance_result
 
     def fit_plane_through_hand(self, image):
+        # Setup the 3D coordinates
         width, height, _ = tf.shape(image)
-        coords2d = create_coord_pairs(width, height)  # [width * height, 2]
+        uv_coords = create_coord_pairs(width, height)  # [width * height, 2]
         depth_values = tf.reshape(image, [width * height, 1])
-        coords3d = tf.concat([coords2d, depth_values], axis=-1)
-        # take only nonzero pixels
-        coords3d_nonzero = tf.boolean_mask(coords3d, coords3d[:, 2] != 0)
-        norm, mean = best_fitting_hyperplane(coords3d_nonzero.numpy())
-        print(norm, mean)
+        uvz_coords = tf.concat([uv_coords, depth_values], axis=-1)
+
+        # Take only nonzero pixels
+        uvz_coords_nonzero = tf.boolean_mask(uvz_coords, uvz_coords[:, 2] != 0)
+        uvz_coords_nonzero = tf.random.shuffle(uvz_coords_nonzero)
+        uvz_coords_nonzero = uvz_coords_nonzero[:50]
+        # Fit the hyperplane
+        norm3d, mean3d = best_fitting_hyperplane(uvz_coords_nonzero.numpy())
+        # Correct orientation of the norm vector
+        camera = np.array([0, 0, 1])
+        # If the vector is not in the direction of camera
+        if np.dot(norm3d, camera) < 0:
+            # Then make it go the other direction
+            norm3d = -norm3d
+        print(norm3d, mean3d)
+        print(f"Width, height: {width}, {height}")
+        # norm, mean = self._transform_orientation_vectors_to_2d(norm3d, mean3d)
+        mean = mean3d[:2]
+        norm = 20 * norm3d[:2] + mean
+        print(f"Norm, mean: {norm}, {mean}")
+        return norm, mean
 
     def accept_gesture(self, keypoints: np.ndarray) -> GestureAcceptanceResult:
         """
@@ -126,22 +144,23 @@ class GestureRecognizer:
             else:
                 self.fig, self.ax = image_plot()
 
-    def plot(self, acceptance_result, image, joints):
+    def plot(self, acceptance_result: GestureAcceptanceResult, image, joints, norm=None, mean=None):
         if self.plot_result:
+            if self.plot_orientation and norm is None and mean is None:
+                norm, mean = self._transform_orientation_vectors_to_2d(acceptance_result.orientation,
+                                                                       acceptance_result.orientation_joints_mean)
+
             gesture_label = self._get_gesture_label(acceptance_result)
             if self.plot_feedback:
                 # get JREs
                 jres = acceptance_result.joints_jre[:, acceptance_result.predicted_gesture_idx]
 
-                norm, mean = None, None
-                if self.plot_orientation:
-                    norm, mean = self._get_orientation_vectors_in_2d(acceptance_result)
-
                 plots.plot_skeleton_with_jre_live(
                     self.fig, self.ax, image, joints, jres,
                     label=gesture_label, norm_vec=norm, mean_vec=mean)
             else:
-                plots.plot_skeleton_with_label_live(self.fig, self.ax, image, joints, gesture_label)
+                plots.plot_skeleton_with_label_live(self.fig, self.ax, image, joints, gesture_label,
+                                                    norm_vec=norm, mean_vec=mean)
 
     def _get_gesture_label(self, result: GestureAcceptanceResult):
         label = result.gesture_label
@@ -160,9 +179,7 @@ class GestureRecognizer:
         else:
             return angle
 
-    def _get_orientation_vectors_in_2d(self, result: GestureAcceptanceResult):
-        mean3d = result.orientation_joints_mean
-        norm3d = result.orientation
+    def _transform_orientation_vectors_to_2d(self, norm3d, mean3d):
         norm2d, mean2d = self.camera.world_to_pixel(
             np.stack([mean3d + 20 * norm3d, mean3d]))
         mean_cropped = tf.squeeze(self.estimator.convert_to_cropped_coords(mean2d))

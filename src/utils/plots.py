@@ -232,13 +232,15 @@ def plot_joints_with_annotations(image, joints_pred, joints_true, show_fig=True,
 
 
 @plotlive
-def plot_skeleton_with_label_live(fig, ax, image, joints2d, label):
+def plot_skeleton_with_label_live(fig, ax, image, joints2d, label, norm_vec=None, mean_vec=None):
     """
     Plots a depth image with skeleton and
     a label above the axis.
     """
     _plot_depth_image(ax, image)
     _plot_hand_skeleton(ax, joints2d)
+    if norm_vec is not None and mean_vec is not None:
+        _plot_hand_orientation(ax, mean_vec, norm_vec)
     ax.set_title(label)
     ax.set_axis_off()
     fig.tight_layout()
