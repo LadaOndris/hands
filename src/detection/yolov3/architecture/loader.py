@@ -6,8 +6,9 @@ import tensorflow as tf
 from tensorflow.keras.layers import BatchNormalization, Conv2D, Input, Layer, LeakyReLU, MaxPool2D, UpSampling2D, \
     ZeroPadding2D
 
-from src.detection.yolov3.architecture.yolo_layer import YoloLayer
 from src.detection.yolov3.architecture.model import YoloModel
+from src.detection.yolov3.architecture.yolo_layer import YoloLayer
+from src.detection.yolov3depth.architecture.yolo_depth_layer import YoloDepthLayer
 from src.utils.imaging import RESIZE_MODE_CROP, RESIZE_MODE_PAD
 from src.utils.paths import LOGS_DIR, YOLO_CONFIG_FILE
 
@@ -22,7 +23,7 @@ class YoloLoader:
             'maxpool': ['size', 'stride'],
             'route': ['layers'],
             'shortcut': ['from'],
-            'yolo': ['classes', 'mask', 'anchors']
+            'yolo': ['classes', 'mask', 'anchors', 'depth']
         }
         self.batch_size = batch_size
         self._custom_layers = {}
@@ -263,7 +264,12 @@ class YoloLoader:
         anchors = [(anchors[i], anchors[i + 1])
                    for i in range(0, len(anchors), 2)]
         anchors = [anchors[m] for m in mask]
-        prediction = YoloLayer(anchors, num_classes, self.input_layer.shape, name=F"yolo_{i}")(self.inputs)
+
+        if int(block['depth']):
+            prediction = YoloDepthLayer(anchors, num_classes,
+                                        self.input_layer.shape, name=F"yolo_depth_{i}")([self.inputs, self.input_layer])
+        else:
+            prediction = YoloLayer(anchors, num_classes, self.input_layer.shape, name=F"yolo_{i}")(self.inputs)
 
         self.model.anchors.append(anchors)
         self.model.yolo_out_preds.append(prediction)
