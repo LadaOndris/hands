@@ -251,11 +251,11 @@ def average_nonzero_depth(images):
     return mean
 
 
-def create_coord_pairs(width, height):
+def create_coord_pairs(width, height, indexing):
     # Create all coordinate pairs
     x = tf.range(width)
     y = tf.range(height)
-    xx, yy = tf.meshgrid(x, y, indexing='ij')
+    xx, yy = tf.meshgrid(x, y, indexing=indexing)
     xx = tf.reshape(xx, [-1])
     yy = tf.reshape(yy, [-1])
     # Stack along a new axis to create pairs in the last dimension

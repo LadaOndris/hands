@@ -265,7 +265,7 @@ class YoloLoader:
                    for i in range(0, len(anchors), 2)]
         anchors = [anchors[m] for m in mask]
 
-        if int(block['depth']):
+        if 'depth' in block and int(block['depth']):
             prediction = YoloDepthLayer(anchors, num_classes,
                                         self.input_layer.shape, name=F"yolo_depth_{i}")([self.inputs, self.input_layer])
         else:

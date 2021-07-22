@@ -28,6 +28,8 @@ parser.add_argument('--camera', type=str, action='store', default='SR305',
                     help='the camera model in use for live capture (default: SR305)')
 parser.add_argument('--plot', action='store_true', default=False,
                     help='plot the result of gesture recognition')
+parser.add_argument('--plot-hand-only', action='store_true', default=False,
+                    help='plot only the cropped section of the image containing a hand')
 parser.add_argument('--hide-feedback', action='store_true', default=False,
                     help='hide the colorbar with JRE errors')
 parser.add_argument('--hide-orientation', action='store_true', default=False,
@@ -44,6 +46,7 @@ live_acceptance = GestureRecognizer(error_thresh=args.error_threshold,
                                     plot_result=args.plot,
                                     plot_feedback=plot_feedback,
                                     plot_orientation=plot_orientation,
+                                    plot_hand_only=args.plot_hand_only,
                                     camera_name=args.camera)
 recognizer = live_acceptance.start(image_source)
 for result in recognizer:

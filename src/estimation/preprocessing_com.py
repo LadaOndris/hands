@@ -121,7 +121,7 @@ class ComPreprocessor:
 
         # Create all coordinate pairs
         im_width, im_height = tf.shape(image)[:2]
-        coords = create_coord_pairs(im_width, im_height)
+        coords = create_coord_pairs(im_width, im_height, indexing='ij')
 
         image_mask = tf.cast(image > 0., dtype=tf.float32)
         image_mask_flat = tf.reshape(image_mask, [im_width * im_height, 1])

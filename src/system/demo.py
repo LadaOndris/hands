@@ -5,7 +5,7 @@ import tensorflow as tf
 
 import src.estimation.configuration as configs
 import src.utils.plots as plots
-from src.acceptance.base import best_fitting_hyperplane, hand_orientation, joint_relation_errors, vectors_angle
+from src.acceptance.base import fit_hyperplane, hand_orientation, joint_relation_errors, vectors_angle
 from src.acceptance.gesture_acceptance_result import GestureAcceptanceResult
 from src.detection.plots import image_plot
 from src.system.database.reader import UsecaseDatabaseReader
@@ -17,12 +17,13 @@ from src.utils.imaging import average_nonzero_depth, create_coord_pairs
 class GestureRecognizer:
 
     def __init__(self, error_thresh: int, orientation_thresh: int, database_subdir: str, camera_name: str,
-                 plot_result=True, plot_feedback=False, plot_orientation=True):
+                 plot_result=True, plot_feedback=False, plot_orientation=True, plot_hand_only=False):
         self.jre_thresh = error_thresh
         self.orientation_thresh = orientation_thresh
         self.plot_result = plot_result
         self.plot_feedback = plot_feedback
         self.plot_orientation = plot_orientation
+        self.plot_hand_only = plot_hand_only
 
         self.camera = Camera(camera_name)
         config = configs.PredictCustomDataset()
@@ -77,38 +78,50 @@ class GestureRecognizer:
             tf.print(F"Depth: {mean_depth / 10:.0f} cm")
 
             norm, mean = self.fit_plane_through_hand(image_subregion)
-            # norm, mean = None, None
-            self.plot(acceptance_result, image_subregion, joints_subregion, norm, mean)
+            # norm, mean = acceptance_result.orientation, acceptance_result.orientation_joints_mean
+            # norm, mean = self._transform_orientation_vectors_to_2d(norm, mean)
+            if self.plot_hand_only:
+                self.plot(acceptance_result, image_subregion, joints_subregion, norm, mean)
+            else:
+                norm = tf.squeeze(self.estimator.convert_to_global_coords(norm))
+                mean = tf.squeeze(self.estimator.convert_to_global_coords(mean))
+                self.plot(acceptance_result, self.estimator.resized_image, joints_uvz, norm, mean)
 
             image_idx += 1
             yield acceptance_result
 
-    def fit_plane_through_hand(self, image):
-        # Setup the 3D coordinates
-        width, height, _ = tf.shape(image)
-        uv_coords = create_coord_pairs(width, height)  # [width * height, 2]
+    @staticmethod
+    def fit_plane_through_hand(image):
+        uvz_coords = GestureRecognizer._setup_uvz_coordinates(image)
+        uvz_coords_nonzero = GestureRecognizer._select_random_nonzero_pixels(uvz_coords, samples=50)
+        norm3d, mean3d = fit_hyperplane(uvz_coords_nonzero.numpy())
+        norm3d = GestureRecognizer._correct_vector_orientation(norm3d)
+        return norm3d[:2], mean3d[:2]
+
+    @staticmethod
+    def _setup_uvz_coordinates(image):
+        height, width, _ = tf.shape(image)
+        uv_coords = create_coord_pairs(width, height, indexing='xy')  # [width * height, 2]
         depth_values = tf.reshape(image, [width * height, 1])
         uvz_coords = tf.concat([uv_coords, depth_values], axis=-1)
+        return uvz_coords
 
-        # Take only nonzero pixels
+    @staticmethod
+    def _select_random_nonzero_pixels(uvz_coords, samples):
         uvz_coords_nonzero = tf.boolean_mask(uvz_coords, uvz_coords[:, 2] != 0)
         uvz_coords_nonzero = tf.random.shuffle(uvz_coords_nonzero)
-        uvz_coords_nonzero = uvz_coords_nonzero[:50]
-        # Fit the hyperplane
-        norm3d, mean3d = best_fitting_hyperplane(uvz_coords_nonzero.numpy())
+        uvz_coords_nonzero = uvz_coords_nonzero[:samples]
+        return uvz_coords_nonzero
+
+    @staticmethod
+    def _correct_vector_orientation(vector):
         # Correct orientation of the norm vector
         camera = np.array([0, 0, 1])
         # If the vector is not in the direction of camera
-        if np.dot(norm3d, camera) < 0:
+        if np.dot(vector, camera) > 0:
             # Then make it go the other direction
-            norm3d = -norm3d
-        print(norm3d, mean3d)
-        print(f"Width, height: {width}, {height}")
-        # norm, mean = self._transform_orientation_vectors_to_2d(norm3d, mean3d)
-        mean = mean3d[:2]
-        norm = 20 * norm3d[:2] + mean
-        print(f"Norm, mean: {norm}, {mean}")
-        return norm, mean
+            return -vector
+        return vector
 
     def accept_gesture(self, keypoints: np.ndarray) -> GestureAcceptanceResult:
         """
@@ -146,9 +159,8 @@ class GestureRecognizer:
 
     def plot(self, acceptance_result: GestureAcceptanceResult, image, joints, norm=None, mean=None):
         if self.plot_result:
-            if self.plot_orientation and norm is None and mean is None:
-                norm, mean = self._transform_orientation_vectors_to_2d(acceptance_result.orientation,
-                                                                       acceptance_result.orientation_joints_mean)
+            # if self.plot_orientation and norm is not None and mean is not None:
+            #    norm, mean = self._transform_orientation_vectors_to_2d(norm, mean)
 
             gesture_label = self._get_gesture_label(acceptance_result)
             if self.plot_feedback:

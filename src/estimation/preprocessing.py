@@ -401,3 +401,8 @@ class DatasetPreprocessor:
     def convert_coords_to_local(self, uvz_coords):
         uv_local = uvz_coords[..., :2] - self.bboxes[..., tf.newaxis, :2]
         return uv_local
+
+    def convert_coords_to_global(self, local_uvz_coords):
+        uv_global = local_uvz_coords[..., :2] + self.bboxes[..., tf.newaxis, :2]
+        return uv_global
+

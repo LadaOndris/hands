@@ -35,14 +35,14 @@ class TestYoloDepthLayer(tf.test.TestCase):
         channels = 1
         anchor_size = 10
         anchors = 1
-        layer = self.setup_depth_layer(img_width=img_width, anchor_size=10)
+        layer = self.setup_depth_layer(img_width=img_width, anchor_size=anchor_size)
         stride = img_width / cells_in_row
         mean_depth = 200
         images = tf.fill([batch, img_width, img_width, channels], value=mean_depth)
 
-        expected_anchor_size = 100. / mean_depth * anchor_size
+        expected_anchor_size = 1. / mean_depth * anchor_size
         expected_anchors = tf.fill([batch, cells_in_row, cells_in_row, anchors, 2], value=expected_anchor_size)
 
         scaled_anchors = layer.scale_anchors(images, stride)
 
-        self.assertAllEqual(scaled_anchors, expected_anchors)
+        self.assertAllCloseAccordingToType(scaled_anchors, expected_anchors)

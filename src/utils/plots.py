@@ -119,7 +119,8 @@ def _plot_hand_orientation(ax, mean, norm):
     Plots an arrow (a vector) from the 'mean' position
     in the direction of the 'norm' vector.
     """
-    ax.arrow(mean[0], mean[1], dx=norm[0] - mean[0], dy=norm[1] - mean[1],
+    norm *= 20
+    ax.arrow(mean[0], mean[1], dx=norm[0], dy=norm[1],
              color='orange', head_length=5, shape='full', head_width=4, zorder=1000,
              width=1)
 

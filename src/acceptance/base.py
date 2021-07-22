@@ -183,17 +183,17 @@ def hand_orientation(joints: np.ndarray):
         norms_list = []
         means_list = []
         for i in range(palm_joints.shape[0]):
-            norm_vec, mean = best_fitting_hyperplane(palm_joints[i])
+            norm_vec, mean = fit_hyperplane(palm_joints[i])
             norms_list.append(norm_vec)
             means_list.append(mean)
         norm_vec = np.concatenate(norms_list)
         mean = np.concatenate(means_list)
     else:
-        norm_vec, mean = best_fitting_hyperplane(palm_joints)
+        norm_vec, mean = fit_hyperplane(palm_joints)
     return norm_vec, mean
 
 
-def best_fitting_hyperplane(z: np.ndarray):
+def fit_hyperplane(z: np.ndarray):
     """
     It approximates the best fitting hyperplane through
     these points using SVD (Singular Value Decomposition).
@@ -328,4 +328,4 @@ def transform_orientation_to_2d(norm3d, mean3d, bbox, cam: Camera):
 if __name__ == '__main__':
     # test_relative_distances()
     A = np.array([[1, 3], [2, 4], [2, 8]])
-    norm_vec, mean = best_fitting_hyperplane(A)
+    norm_vec, mean = fit_hyperplane(A)

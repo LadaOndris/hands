@@ -33,6 +33,7 @@ class HandPositionEstimator:
         self.estimation_preprocessor = DatasetPreprocessor(None, self.network.input_size, self.network.out_size,
                                                            camera=self.camera, config=config)
         self.estimation_fig_location = None
+        self.resized_image = None
 
         if self.plot_estimation or self.plot_detection:
             # Prepare the plot for live plotting
@@ -112,8 +113,8 @@ class HandPositionEstimator:
         image = tf.convert_to_tensor(image)
         if tf.rank(image) != 3:
             raise Exception("Invalid image rank, expected 3")
-        resized_image = self._resize_image_and_depth(image)
-        batch_images = tf.expand_dims(resized_image, axis=0)
+        self.resized_image = self._resize_image_and_depth(image)
+        batch_images = tf.expand_dims(self.resized_image, axis=0)
         boxes = self._detect(batch_images)
 
         if self._detection_failed(boxes):
@@ -145,8 +146,8 @@ class HandPositionEstimator:
             if tf.rank(depth_image) == 4:
                 depth_image = tf.squeeze(depth_image, axis=0)
             fig_location = self._string_format_or_none(fig_location_pattern, iter_index)
-            depth_image = self._resize_image_and_depth(depth_image)
-            batch_images = tf.expand_dims(depth_image, axis=0)
+            self.resized_image = self._resize_image_and_depth(depth_image)
+            batch_images = tf.expand_dims(self.resized_image, axis=0)
             boxes = self._detect(batch_images, num_detections, fig_location)
             yield boxes
             iter_index += 1
@@ -174,6 +175,9 @@ class HandPositionEstimator:
         """
         joints_subregion = self.estimation_preprocessor.convert_coords_to_local(joints_uvz)
         return joints_subregion
+
+    def convert_to_global_coords(self, local_uvz_coords):
+        return self.estimation_preprocessor.convert_coords_to_global(local_uvz_coords)
 
     def _string_format_or_none(self, fig_location_pattern, index):
         if fig_location_pattern is None:
