@@ -1,6 +1,6 @@
 import tensorflow as tf
 import os
-
+from src.utils.imaging import set_depth_unit
 
 class HandsegDatasetBboxes:
 
@@ -52,9 +52,15 @@ class HandsegDatasetBboxes:
         # depth_image = tf.keras.preprocessing.image.load_img(image_file_name, color_mode='grayscale')
         depth_image = tf.io.read_file(image_file_path)
         # loads depth images and converts values to fit in dtype.uint8
-        depth_image = tf.io.decode_image(depth_image, channels=1)
-        # replace outliers above value 15000
-        depth_image = tf.where(depth_image < 35, depth_image, 0)
+        depth_image = tf.io.decode_image(depth_image, channels=1, dtype=tf.uint16)
+        # Correct depth unit
+        unit_mm = 0.001
+        unit_previous = 0.00012498664727900177  # 0.125 mm
+        depth_image = set_depth_unit(depth_image, target_depth_unit=unit_mm,
+                                     previous_depth_unit=unit_previous)
+        depth_image = tf.cast(depth_image, dtype=tf.float32)
+        # Replace values above 1500 mm with background
+        depth_image = tf.where(depth_image < 1500, depth_image, 0)
 
         depth_image.set_shape([480, 640, 1])
         bboxes = tf.reshape(annotation_parts[1:], shape=[-1, 4])

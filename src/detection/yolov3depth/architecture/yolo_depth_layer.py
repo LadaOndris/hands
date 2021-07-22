@@ -76,7 +76,7 @@ class YoloDepthLayer(tf.keras.layers.Layer):
     def scale_anchors(self, images, stride):
         mean_depths = self.cells_mean_depths(images, stride)  # (batch_size, out, out)
         base_anchor = self.anchors  # (anchors_per_scale, 2)
-        scaled_depths = tf.math.divide_no_nan(100., mean_depths)
+        scaled_depths = tf.math.divide_no_nan(1., mean_depths)
         scaled_depths = scaled_depths[:, :, :, tf.newaxis, tf.newaxis]  # (batch_size, out, out, 1, 1)
         base_anchor = base_anchor[tf.newaxis, tf.newaxis, tf.newaxis, :, :]  # (1, 1, 1, anchors_per_scale, 2)
         base_anchor = tf.cast(base_anchor, dtype=tf.float32)

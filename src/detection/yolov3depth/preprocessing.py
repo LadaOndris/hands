@@ -116,7 +116,7 @@ class DatasetPreprocessor:
         for scale_index in range(len(self.output_shapes)):
             mean_depths = self.cells_mean_depths(image, self.strides[scale_index])  # (out, out)
             base_anchor = self.anchors[scale_index]  # (anchors_per_scale, 2)
-            scaled_depths = np.nan_to_num(100. / mean_depths)
+            scaled_depths = np.nan_to_num(1. / mean_depths)
             scaled_depths = scaled_depths[:, :, np.newaxis, np.newaxis]  # (out, out, 1, 1)
             base_anchor = base_anchor[np.newaxis, np.newaxis, :, :]  # (1, 1, anchors_per_scale, 2)
             scaled_anchors = base_anchor * scaled_depths

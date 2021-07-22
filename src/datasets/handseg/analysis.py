@@ -14,15 +14,15 @@ dirname = os.path.dirname(__file__)
 
 
 def foo():
-    depth_im = np.array(Image.open(os.path.join(dirname, 'images/user-4.00000003.png')))  # Loading depth image
-    mask_im = np.array(Image.open(os.path.join(dirname, 'masks/user-4.00000003.png')))  # Loading mask image
+    depth_im = np.array(Image.open(HANDSEG_DATASET_DIR.joinpath('images/user-4.00000001.png')))  # Loading depth image
+    mask_im = np.array(Image.open(HANDSEG_DATASET_DIR.joinpath('masks/user-4.00000001.png')))  # Loading mask image
     depth_im = depth_im.astype(np.float32)  # Converting to float
-    mean = np.mean(depth_im)
+    # mean = np.mean(depth_im)
     print(Counter(depth_im.flatten()))
-    # plt.hist(mask_im, bins=100)
-    # plt.show()
-    mean_depth_ims = 10000.0  # Mean value of the depth images
-    depth_im /= mean_depth_ims  # Normalizing depth image
+    plt.hist(depth_im[depth_im > 0], bins=100)
+    plt.show()
+    # mean_depth_ims = 10000.0  # Mean value of the depth images
+    # depth_im /= mean_depth_ims  # Normalizing depth image
     plt.imshow(depth_im)
     plt.title('Depth Image')
     plt.show()  # Displaying Depth Image
@@ -147,22 +147,25 @@ def generate_bounding_boxes(print_images=False, save_to_file=False, bboxes_filen
 
 
 def analyse_pixel_distance():
-    dataset = HandsegDatasetBboxes(batch_size=16, dataset_path=HANDSEG_DATASET_DIR, train_size=0.8)
+    dataset = HandsegDatasetBboxes(batch_size=16, dataset_path=HANDSEG_DATASET_DIR, train_size=0.8,
+                                   model_input_shape=[416, 416])
     for batch_images, batch_bboxes in dataset.train_batch_iterator:
-        ones = np.ones(batch_images.shape)
-        zeros = np.zeros(batch_images.shape)
-        mask = np.where(batch_images > 0, ones, zeros)
+        img = batch_images[0].numpy()
+        plt.hist(img[img >0], bins=100)
+        plt.show()
+        mask = np.where(batch_images > 0, 1, 0)
         print(batch_images[mask == 1])
         print(np.min(batch_images), np.max(batch_images))
         break
 
 
 if __name__ == '__main__':
+    # foo()
     # depth_hist()
-    # analyse_pixel_distance()
+    analyse_pixel_distance()
     dataset = HandsegDatasetBboxes(batch_size=5, dataset_path=HANDSEG_DATASET_DIR, train_size=0.8,
                                    model_input_shape=[416, 416])
-    show_images_with_bboxes(dataset)
+    # show_images_with_bboxes(dataset)
     # generate_bounding_boxes(print_images=False, save_to_file=False,
     #                        bboxes_filename='bounding_boxes.txt')
     # show_images_from_handseg_dataset(num=3, dataset_path=handseg_path,
