@@ -11,19 +11,28 @@ mkdir $SCRATCHDIR
 
 echo "$PBS_JOBID is running on node `hostname -f` in a scratch directory $SCRATCHDIR" >> $DATADIR/jobs_info.txt
 
-module add python-3.6.2-gcc
-module add python36-modules-gcc
-module add opencv-3.4.5-py36
-module add tensorflow-2.0.0-gpu-python3
+module add conda-modules-py37
+conda env remove -n ibt
+conda create -n ibt python=3.7
+conda activate ibt
+conda install matplotlib
+conda install tensorflow
+conda install scikit-learn
+pip install opencv-python
+pip install scikit-image
+pip install gast==0.3.3
+pip install tensorflow-addons
+conda list
 
 cp -r "$DATADIR/src" "$SCRATCHDIR/" || { echo >&2 "Couldnt copy srcdir to scratchdir."; exit 2; }
+cp -r $DATADIR/*.py "$SCRATCHDIR/" || { echo >&2 "Couldnt copy .py files to scratchdir."; exit 2; }
 
 # Prepare directory
 mkdir "$SCRATCHDIR/datasets"
 # Copy cvpr15_MSRAHandGestureDB.tar
-cp -r "$DATADIR/datasets/handseg150k.tar" "$SCRATCHDIR/datasets" || { echo >&2 "Couldnt copy handseg150k.tar"; exit 2; }
+cp -r "$DATADIR/datasets/handseg.tar" "$SCRATCHDIR/datasets" || { echo >&2 "Couldnt copy handseg.tar"; exit 2; }
 # Extract it
-tar -xf "$SCRATCHDIR/datasets/handseg150k.tar" -C "$SCRATCHDIR/datasets" || { echo >&2 "Couldnt extract handseg150k.tar"; exit 2; }
+tar -xf "$SCRATCHDIR/datasets/handseg.tar" -C "$SCRATCHDIR/datasets" || { echo >&2 "Couldnt extract handseg.tar"; exit 2; }
 
 export PYTHONPATH=$SCRATCHDIR
 python3 $SCRATCHDIR/train_yolov3depth.py

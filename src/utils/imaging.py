@@ -57,16 +57,21 @@ def tf_resize_image(depth_image, shape, resize_mode: str):
     depth_image = tf.cast(depth_image, dtype=type)
     return depth_image
 
-
+@tf.function
 def resize_bilinear_nearest(image_in, shape):
-    img_height, img_width = image_in.shape[:2]
-    width, height = shape[:2]
+    img_shape = tf.shape(image_in)
+    img_height = img_shape[0]
+    img_width = img_shape[1]
+
+    width = shape[0]
+    height = shape[1]
 
     image = tf.cast(image_in, tf.float32)
     image = tf.reshape(image, [-1])
 
-    x_ratio = float(img_width - 1) / (width - 1) if width > 1 else 0
-    y_ratio = float(img_height - 1) / (height - 1) if height > 1 else 0
+    zero_constant = tf.constant(0., dtype=tf.float64)
+    x_ratio = tf.cast(img_width - 1, tf.float64) / tf.cast(width - 1, tf.float64) if width > 1 else zero_constant
+    y_ratio = tf.cast(img_height - 1, tf.float64) / tf.cast(height - 1, tf.float64) if height > 1 else zero_constant
 
     xx = tf.range(width)
     yy = tf.range(height)
@@ -241,8 +246,9 @@ def average_nonzero_depth(images):
     depths
         A 1-D Tensor of shape [batch].
     """
-    if tf.rank(images) != 4:
-        raise TypeError(F"Invalid rank: {tf.rank(images)}, expeceted 4.")
+    # TODO
+    #if tf.rank(images) != 4:
+    #    raise TypeError(F"Invalid rank: {tf.rank(images)}, expected 4.")
 
     axes = [1, 2, 3]
     sums = tf.math.reduce_sum(images, axis=axes)
@@ -262,6 +268,106 @@ def create_coord_pairs(width, height, indexing):
     coords = tf.stack([xx, yy], axis=-1)
     coords = tf.cast(coords, tf.float32)  # [im_width * im_height, 2]
     return coords
+
+
+def crop_with_pad(image, bbox):
+    x_start, y_start, x_end, y_end = tf.split(bbox, [1, 1, 1, 1])
+
+    x_start_bound = tf.maximum(x_start, 0)[0]
+    y_start_bound = tf.maximum(y_start, 0)[0]
+    x_end_bound = tf.minimum(image.shape[1], x_end)[0]
+    y_end_bound = tf.minimum(image.shape[0], y_end)[0]
+
+    cropped_image = image[y_start_bound:y_end_bound, x_start_bound:x_end_bound]
+
+    # Pad the cropped image if we were out of bounds
+    padded_image = tf.pad(cropped_image, [[(y_start_bound - y_start)[0], (y_end - y_end_bound)[0]],
+                                          [(x_start_bound - x_start)[0], (x_end - x_end_bound)[0]],
+                                          [0, 0]])
+    return padded_image
+
+
+def zoom_in(depth_image, bboxes, zoom=None, new_distance=None):
+    #if tf.shape(bboxes)[0] == 0:
+    #    raise ValueError("There is no bounding box. Unable to zoom in.")
+    if zoom is None and new_distance is None:
+        raise ValueError("Zoom factor and new distance cannot be both None.")
+
+    image_shape = tf.shape(depth_image)
+    bbox = tf.cast(bboxes[0], tf.int32)
+    x1, x2 = bbox[0], bbox[2]
+    y1, y2 = bbox[1], bbox[3]
+    subimage = depth_image[y1:y2, x1:x2, :]
+    mean_depth = average_nonzero_depth(subimage[tf.newaxis, ...])[0]
+
+    if new_distance is None:
+        new_distance = mean_depth / zoom
+    if zoom is None:
+        zoom = mean_depth / new_distance
+
+    new_image_bbox = _bbox_of_zoomed_area(image_shape, bbox, zoom)
+    cropped_image = crop_with_pad(depth_image, new_image_bbox)
+    resized_image = resize_bilinear_nearest(cropped_image, image_shape)
+    zoomed_image = _zoom_depth(resized_image, new_distance, mean_depth)
+
+    # 1. Correct bboxes - amend coordinates to fit the new image
+    cropped_bboxes = bboxes - tf.concat([new_image_bbox[:2], new_image_bbox[:2]], axis=-1)
+    resize_coeff = image_shape[:2] / tf.shape(cropped_image)[:2]
+    resized_bboxes = tf.cast(cropped_bboxes, tf.float64) * tf.concat([resize_coeff, resize_coeff], axis=-1)
+    resized_bboxes = tf.cast(resized_bboxes, tf.int32)
+    # 2. Check if they are out of bounds
+    bboxes_start = tf.math.maximum(resized_bboxes[:, :2], tf.constant([0, 0]))
+    bboxes_end = tf.math.minimum(resized_bboxes[:, 2:], image_shape[:2] - 1)
+    cropped_bboxes = tf.concat([bboxes_start, bboxes_end], axis=-1)
+    # remove too narrow boxes because of the crop
+    ious = _intersection_over_box1(bboxes, new_image_bbox)
+    bboxes_mask_indices = tf.where(ious >= 0.5)
+    zoomed_bboxes = tf.gather_nd(cropped_bboxes, bboxes_mask_indices)
+
+    return zoomed_image, zoomed_bboxes
+
+
+def _intersection_over_box1(box1, box2):
+    box1 = tf.cast(box1, dtype=tf.float32)
+    box2 = tf.cast(box2, dtype=tf.float32)
+
+    box1_wh = box1[..., 2:] - box1[..., :2]
+    box2_wh = box2[..., 2:] - box2[..., :2]
+    box1_area = box1_wh[..., 0] * box1_wh[..., 1]
+    box2_area = box2_wh[..., 0] * box2_wh[..., 1]
+
+    left_up = tf.maximum(box1[..., :2], box2[..., :2])
+    right_down = tf.minimum(box1[..., 2:], box2[..., 2:])
+    inter_section = tf.maximum(right_down - left_up, 0.0)
+    inter_area = inter_section[..., 0] * inter_section[..., 1]
+
+    return tf.math.divide_no_nan(inter_area, box1_area)
+
+
+def _bbox_of_zoomed_area(image_shape, hand_bbox, zoom):
+    x1, x2 = hand_bbox[0], hand_bbox[2]
+    y1, y2 = hand_bbox[1], hand_bbox[3]
+    new_size = tf.cast(image_shape[:2], dtype=tf.float32) / zoom
+    bbox_size = [x2 - x1, y2 - y1]
+    # Random position of the zoomed hand
+    center = [(x1 + x2) / 2, (y1 + y2) / 2]
+    delta = (new_size - bbox_size) / 2
+    p1 = center - delta
+    p2 = center + delta
+
+    new_image_center = tf.random.uniform(shape=[2], minval=p1, maxval=p2)
+    new_image_p1 = new_image_center - new_size / 2
+    new_image_p2 = new_image_center + new_size / 2
+    new_image_p1 = tf.cast(new_image_p1, tf.int32)
+    new_image_p2 = tf.cast(new_image_p2, tf.int32)
+    new_image_bbox = tf.concat([new_image_p1, new_image_p2], axis=-1)
+    return new_image_bbox
+
+
+def _zoom_depth(image, new_depth, previous_depth):
+    zoom_distance = new_depth - previous_depth
+    zoomed_image = tf.where(image > 0, image + zoom_distance, 0)
+    return zoomed_image
 
 
 if __name__ == "__main__":

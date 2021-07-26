@@ -61,7 +61,3 @@ class HandsegDataset:
         image[image == 0] = HUGE_INT
         mask = np.array(Image.open(mask_path))
         return image, mask
-
-
-d = HandsegDataset(HANDSEG_DATASET_DIR)
-d.load_image(0)

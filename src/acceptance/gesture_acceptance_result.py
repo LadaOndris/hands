@@ -28,3 +28,10 @@ class GestureAcceptanceResult:
         self.orientation_joints_mean = None
         # True if thresholds are exceeded
         self.is_gesture_valid = False
+
+    def get_gesture_label(self):
+        label = self.gesture_label
+        if self.is_gesture_valid:
+            return F"Gesture {label}"
+        else:
+            return "---"

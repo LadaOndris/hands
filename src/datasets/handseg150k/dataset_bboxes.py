@@ -1,10 +1,13 @@
-import tensorflow as tf
 import os
-from src.utils.imaging import set_depth_unit
+
+import tensorflow as tf
+
+from src.utils.imaging import set_depth_unit, zoom_in
+
 
 class HandsegDatasetBboxes:
 
-    def __init__(self, dataset_path, train_size, model_input_shape, batch_size=16, shuffle=True):
+    def __init__(self, dataset_path, train_size, model_input_shape, batch_size=16, shuffle=True, augment=False):
         if train_size < 0 or train_size > 1:
             raise ValueError("Train_size expected to be in range [0, 1], but got {train_size}.")
 
@@ -13,6 +16,7 @@ class HandsegDatasetBboxes:
         self.model_input_shape = model_input_shape
         self.batch_size = batch_size
         self.shuffle = shuffle
+        self.augment = augment
         self.batch_index = 0
 
         self.train_annotations, self.test_annotations = self._load_annotations()
@@ -36,6 +40,8 @@ class HandsegDatasetBboxes:
             dataset = dataset.shuffle(len(annotations), reshuffle_each_iteration=True)
         dataset = dataset.repeat()
         dataset = dataset.map(self._prepare_sample)
+        if self.augment:
+            dataset = dataset.map(self._augment)
         shapes = (tf.TensorShape([416, 416, 1]), tf.TensorShape([None, 4]))
         dataset = dataset.padded_batch(self.batch_size, padded_shapes=shapes)
         dataset = dataset.prefetch(buffer_size=1)
@@ -79,7 +85,7 @@ class HandsegDatasetBboxes:
         bboxes = bboxes - tf.constant([80, 0, 80, 0], dtype=tf.float32)[tf.newaxis, :]
         # crop out of bounds boxes
         bboxes = tf.where(bboxes < 0., 0., bboxes)
-        bboxes = tf.where(bboxes >= 480., 479., bboxes)
+        bboxes = tf.where(bboxes > 479., 479., bboxes)
         # remove too narrow boxes because of the crop
         bboxes_mask_indices = tf.where(bboxes[..., 2] - bboxes[..., 0] > 5.)
         bboxes = tf.gather_nd(bboxes, bboxes_mask_indices)
@@ -94,4 +100,11 @@ class HandsegDatasetBboxes:
         a = tf.tile(tf.constant([[0, 52, 0, 52]], dtype=tf.float32), [tf.shape(bboxes)[0], 1])
         bboxes = tf.math.multiply(bboxes, m)
         bboxes = tf.math.add(bboxes, a)
+        return depth_image, bboxes
+
+    def _augment(self, depth_image, bboxes):
+        new_distance = tf.random.uniform(shape=[1], minval=50, maxval=1500)
+        tf.print(tf.shape(bboxes))
+        if tf.shape(bboxes)[0] != 0:
+            depth_image, bboxes = zoom_in(depth_image, bboxes, new_distance=new_distance[0])
         return depth_image, bboxes

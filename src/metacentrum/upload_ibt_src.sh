@@ -4,4 +4,5 @@
 #shopt -s globstar
 
 scp -r ~/projects/IBT/src/ ladislav_ondris@storage-brno6.metacentrum.cz:/home/ladislav_ondris/IBT/
+scp -r ~/projects/IBT/*.py ladislav_ondris@storage-brno6.metacentrum.cz:/home/ladislav_ondris/IBT/
 

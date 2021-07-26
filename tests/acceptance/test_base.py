@@ -2,7 +2,7 @@ from unittest import TestCase
 
 import numpy as np
 
-from src.acceptance.base import vectors_angle, vectors_angle_batch
+from src.acceptance.base import vectors_angle
 
 
 class TestBase(TestCase):
@@ -77,3 +77,4 @@ class TestBase(TestCase):
             [var, var, var, 0],
         ])
         return expected_angles
+

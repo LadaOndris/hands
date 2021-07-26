@@ -267,7 +267,6 @@ def preprocess_image_for_detection(images):
     ----------
     images
         Image pixel values are expected to be in milimeters.
-    camera
     """
     dtype = images.dtype
     images = tf.cast(images, dtype=tf.float32)

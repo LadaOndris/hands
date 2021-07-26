@@ -162,10 +162,10 @@ def analyse_pixel_distance():
 if __name__ == '__main__':
     # foo()
     # depth_hist()
-    analyse_pixel_distance()
-    dataset = HandsegDatasetBboxes(batch_size=5, dataset_path=HANDSEG_DATASET_DIR, train_size=0.8,
-                                   model_input_shape=[416, 416])
-    # show_images_with_bboxes(dataset)
+    # analyse_pixel_distance()
+    dataset = HandsegDatasetBboxes(batch_size=3, dataset_path=HANDSEG_DATASET_DIR, train_size=0.8,
+                                   model_input_shape=[416, 416], augment=True)
+    show_images_with_bboxes(dataset)
     # generate_bounding_boxes(print_images=False, save_to_file=False,
     #                        bboxes_filename='bounding_boxes.txt')
     # show_images_from_handseg_dataset(num=3, dataset_path=handseg_path,

@@ -7,11 +7,11 @@ from src.system.demo import GestureRecognizer
 
 def print_result(result: GestureAcceptanceResult):
     if not result.is_gesture_valid:
-        result.gesture_label = 'None'
+        result.gesture_label = '---'
 
-    print(F"Gesture: {result.gesture_label}\t"
-          F"JRE: {result.gesture_jre}\t"
-          F"Orient. diff: {result.angle_difference:.2f}")
+    print(F"Gesture: {result.gesture_label}\t")
+    # F"JRE: {result.gesture_jre}\t"
+    # F"Orient. diff: {result.angle_difference:.2f}")
 
 
 parser = argparse.ArgumentParser()

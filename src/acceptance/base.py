@@ -1,7 +1,9 @@
 import numpy as np
 import scipy.spatial
+import tensorflow as tf
 
 from src.utils.camera import Camera
+from src.utils.imaging import create_coord_pairs
 
 
 def _upper_tri(A):
@@ -323,6 +325,39 @@ def transform_orientation_to_2d(norm3d, mean3d, bbox, cam: Camera):
     norm2d = norm2d[..., :2] - bbox[..., :2]
     mean2d = mean2d[..., :2] - bbox[..., :2]
     return norm2d, mean2d
+
+
+def fit_plane_through_hand(image):
+    uvz_coords = setup_uvz_coordinates(image)
+    uvz_coords_nonzero = select_random_nonzero_pixels(uvz_coords, samples=50)
+    norm3d, mean3d = fit_hyperplane(uvz_coords_nonzero.numpy())
+    norm3d = correct_vector_orientation(norm3d)
+    return norm3d[:2], mean3d[:2]
+
+
+def setup_uvz_coordinates(image):
+    height, width, _ = tf.shape(image)
+    uv_coords = create_coord_pairs(width, height, indexing='xy')  # [width * height, 2]
+    depth_values = tf.reshape(image, [width * height, 1])
+    uvz_coords = tf.concat([uv_coords, depth_values], axis=-1)
+    return uvz_coords
+
+
+def select_random_nonzero_pixels(uvz_coords, samples):
+    uvz_coords_nonzero = tf.boolean_mask(uvz_coords, uvz_coords[:, 2] != 0)
+    uvz_coords_nonzero = tf.random.shuffle(uvz_coords_nonzero)
+    uvz_coords_nonzero = uvz_coords_nonzero[:samples]
+    return uvz_coords_nonzero
+
+
+def correct_vector_orientation(vector):
+    # Correct orientation of the norm vector
+    camera = np.array([0, 0, 1])
+    # If the vector is not in the direction of camera
+    if np.dot(vector, camera) > 0:
+        # Then make it go the other direction
+        return -vector
+    return vector
 
 
 if __name__ == '__main__':

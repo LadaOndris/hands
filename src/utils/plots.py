@@ -238,6 +238,7 @@ def plot_skeleton_with_label_live(fig, ax, image, joints2d, label, norm_vec=None
     Plots a depth image with skeleton and
     a label above the axis.
     """
+    plt.rcParams.update({"font.size": 18})
     _plot_depth_image(ax, image)
     _plot_hand_skeleton(ax, joints2d)
     if norm_vec is not None and mean_vec is not None:
