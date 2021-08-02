@@ -7,9 +7,10 @@ from src.detection.yolov3 import utils
 from src.detection.yolov3.architecture.loader import YoloLoader
 from src.estimation.architecture.jgrp2o import JGR_J2O
 from src.estimation.configuration import Config
-from src.estimation.preprocessing import DatasetPreprocessor
+from src.estimation.preprocessing import convert_coords_to_local, DatasetPreprocessor
 from src.utils.camera import Camera
 from src.utils.config import TEST_YOLO_CONF_THRESHOLD
+from src.utils.debugging import timing
 from src.utils.imaging import read_image_from_file, set_depth_unit, tf_resize_image
 from src.utils.paths import LOGS_DIR
 
@@ -90,10 +91,11 @@ class HandPositionEstimator:
             if save_folder is not None:
                 fig_location = save_folder.joinpath(F"{i}.png")
                 self.estimation_fig_location = fig_location
-            joints = self.estimate_from_image(depth_image)
-            if joints is None:
+            joints_uvz, image_subregion, joints_subregion, bboxes = \
+                self.estimate_from_image(depth_image)
+            if joints_uvz is None:
                 continue
-            yield joints
+            yield joints_uvz
             i += 1
 
     def estimate_from_image(self, image):
@@ -111,16 +113,16 @@ class HandPositionEstimator:
         joints_locations
         """
         image = tf.convert_to_tensor(image)
-        if tf.rank(image) != 3:
-            raise Exception("Invalid image rank, expected 3")
+        tf.debugging.assert_rank(image, 3)
+
         self.resized_image = self._resize_image_and_depth(image)
         batch_images = tf.expand_dims(self.resized_image, axis=0)
-        boxes = self._detect(batch_images)
+        boxes, nums = self._detect(batch_images)
 
-        if self._detection_failed(boxes):
-            return None
-        joints_uvz = self._estimate(batch_images, boxes)
-        return joints_uvz
+        if self._detection_failed(boxes) == tf.constant(True):
+            return None, None, None, None
+        joints_uvz, image_subregions, joints_subregion, bboxes = self._estimate(batch_images, boxes)
+        return joints_uvz, image_subregions[0].to_tensor(), joints_subregion, bboxes
 
     def detect_from_source(self, source_generator, num_detections: int = 1, fig_location_pattern=None):
         """
@@ -148,9 +150,11 @@ class HandPositionEstimator:
             fig_location = self._string_format_or_none(fig_location_pattern, iter_index)
             self.resized_image = self._resize_image_and_depth(depth_image)
             batch_images = tf.expand_dims(self.resized_image, axis=0)
-            boxes = self._detect(batch_images, num_detections, fig_location)
+            boxes, nums = self._detect(batch_images, num_detections)
+            self._plot_detection(batch_images, boxes, nums, fig_location)
             yield boxes
             iter_index += 1
+            print(iter_index)
 
     def get_cropped_image(self):
         """
@@ -184,7 +188,9 @@ class HandPositionEstimator:
             return None
         return str(fig_location_pattern).format(index)
 
-    def _detect(self, images, num_detections=1, fig_location=None):
+    @timing
+    @tf.function
+    def _detect(self, images, num_detections=1):
         """
 
         Parameters
@@ -201,25 +207,35 @@ class HandPositionEstimator:
             Returns all zeros if non-max suppression did not find any valid boxes.
         """
         detection_batch_images = preprocess_image_for_detection(images)
-        yolo_outputs = self.detector.tf_model.predict(detection_batch_images)
+        # Call predict on the detector
+        yolo_outputs = self.detector.tf_model(detection_batch_images)
 
         boxes, scores, nums = utils.boxes_from_yolo_outputs(yolo_outputs, self.detector.batch_size,
                                                             self.detector.input_shape,
                                                             TEST_YOLO_CONF_THRESHOLD, iou_thresh=.7,
                                                             max_boxes=num_detections)
+        return boxes, nums
+
+    def _plot_detection(self, images, boxes, nums, fig_location=None):
         if self.plot_detection:
             if fig_location is None:
                 src.detection.plots.plot_predictions_live(self.fig, self.ax, images[0], boxes[0], nums[0])
             else:
                 src.detection.plots.plot_predictions(images[0], boxes[0], nums[0], fig_location)
-        return boxes
 
+    @timing
+    @tf.function
     def _estimate(self, images, boxes):
         boxes = tf.cast(boxes, dtype=tf.int32)
-        normalized_images = self.estimation_preprocessor.preprocess(images, boxes[:, 0, :])
-        y_pred = self.estimator.predict(normalized_images)
-        uvz_pred = self.estimation_preprocessor.postprocess(y_pred)
+        normalized_imgs, cropped_imgs, bboxes, bcubes, resize_coeffs = \
+            self.estimation_preprocessor.preprocess(images, boxes[:, 0, :])
+        # Call predict on the estimator
+        y_pred = self.estimator(normalized_imgs)
+        uvz_pred = self.estimation_preprocessor.postprocess(y_pred, bboxes, bcubes, resize_coeffs)
+        joints_subregion = convert_coords_to_local(uvz_pred, bboxes)
+        return uvz_pred, cropped_imgs, joints_subregion, bboxes
 
+    def _plot_estimation(self, uvz_pred):
         # Plot the inferenced pose
         if self.plot_estimation:
             joints2d = self.estimation_preprocessor.convert_coords_to_local(uvz_pred)
@@ -230,7 +246,6 @@ class HandPositionEstimator:
             else:
                 plots.plot_image_with_skeleton(image, joints2d[0], fig_location=self.estimation_fig_location,
                                                figsize=(4, 4))
-        return uvz_pred
 
     def _read_image(self, file_path: str):
         """
@@ -244,6 +259,8 @@ class HandPositionEstimator:
         depth_image = read_image_from_file(file_path, dtype=tf.uint16, shape=self.camera.image_size)
         return depth_image
 
+    @timing
+    @tf.function
     def _resize_image_and_depth(self, image):
         """
         Resizes to size matching the detector's input shape.

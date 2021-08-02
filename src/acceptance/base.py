@@ -4,6 +4,7 @@ import tensorflow as tf
 
 from src.utils.camera import Camera
 from src.utils.imaging import create_coord_pairs
+from src.utils.debugging import timing
 
 
 def _upper_tri(A):
@@ -327,6 +328,7 @@ def transform_orientation_to_2d(norm3d, mean3d, bbox, cam: Camera):
     return norm2d, mean2d
 
 
+@timing
 def fit_plane_through_hand(image):
     uvz_coords = setup_uvz_coordinates(image)
     uvz_coords_nonzero = select_random_nonzero_pixels(uvz_coords, samples=50)

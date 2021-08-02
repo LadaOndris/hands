@@ -1,4 +1,5 @@
 import tensorflow as tf
+from src.utils.debugging import timing
 
 RESIZE_MODE_CROP = 'crop'
 RESIZE_MODE_PAD = 'pad'
@@ -57,7 +58,6 @@ def tf_resize_image(depth_image, shape, resize_mode: str):
     depth_image = tf.cast(depth_image, dtype=type)
     return depth_image
 
-@tf.function
 def resize_bilinear_nearest(image_in, shape):
     img_shape = tf.shape(image_in)
     img_height = img_shape[0]
@@ -231,7 +231,7 @@ def read_image_from_file(image_file_path, dtype, shape):
     depth_image.set_shape([shape[1], shape[0], 1])
     return depth_image
 
-
+@timing
 def average_nonzero_depth(images):
     """
     Computes the average pixel value
@@ -253,10 +253,13 @@ def average_nonzero_depth(images):
     axes = [1, 2, 3]
     sums = tf.math.reduce_sum(images, axis=axes)
     counts = tf.math.count_nonzero(images, axis=axes, dtype=sums.dtype)
-    mean = sums / counts
+    mean = tf.math.divide_no_nan(sums, counts)
     return mean
 
-
+#
+# @tf.function(input_signature=(
+#         tf.TensorSpec(shape=None, dtype=tf.int32),
+#         tf.TensorSpec(shape=None, dtype=tf.int32),))
 def create_coord_pairs(width, height, indexing):
     # Create all coordinate pairs
     x = tf.range(width)

@@ -64,7 +64,7 @@ class GestureRecognizer:
                 image_array, gesture_label = image_array
             if tf.rank(image_array) == 4:
                 image_array = image_array[0]
-            joints_uvz = self.estimator.estimate_from_image(image_array)
+            joints_uvz, image_subregion = self.estimator.estimate_from_image(image_array)
             # Detection failed, continue to next image
             if joints_uvz is None:
                 continue
@@ -73,7 +73,6 @@ class GestureRecognizer:
             if generator_includes_labels:
                 acceptance_result.expected_gesture_label = gesture_label.numpy()
             # plot the hand position with gesture label
-            image_subregion = self.estimator.get_cropped_image()
             joints_subregion = self.estimator.convert_to_cropped_coords(joints_uvz)
             if self.plot_result:
                 gesture_label = self._get_gesture_label(acceptance_result)

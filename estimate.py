@@ -26,4 +26,5 @@ image_source = get_source_generator(args.source)
 estimator = get_estimator(args.camera, args.plot)
 estimation_generator = estimator.estimate_from_source(image_source)
 for joints in estimation_generator:
-    print('Joints\' coordinates:\n', joints.numpy())
+    # print('Joints\' coordinates:\n', joints.numpy())
+    print('\n')

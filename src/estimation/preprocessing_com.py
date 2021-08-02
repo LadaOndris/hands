@@ -1,11 +1,9 @@
-import numpy as np
 import tensorflow as tf
-from scipy import stats
-from skimage import filters
 
 from src.utils.camera import Camera
+from src.utils.debugging import timing
+from src.utils.filters import apply_threshold
 from src.utils.imaging import create_coord_pairs
-from src.utils.plots import plot_depth_image, plot_depth_image_histogram
 
 
 class ComPreprocessor:
@@ -20,6 +18,7 @@ class ComPreprocessor:
         else:
             self.com_function = self.center_of_mass
 
+    @timing
     def refine_bcube_using_com(self, full_image, bbox, refine_iters=3, cube_size=(250, 250, 250)):
         """
         Refines the bounding box of the detected hand
@@ -77,7 +76,7 @@ class ComPreprocessor:
         # Adjust the center of mass coordinates to orig image space (add U, V offsets)
         com_uv_global = com_local[..., :2] + tf.cast(offsets, tf.float32)
         com_z = com_local[..., 2:3]
-        com_z = tf.where(tf.experimental.numpy.isclose(com_z, 0.), 300, com_z)
+        com_z = tf.where(tf.experimental.numpy.isclose(com_z, 0.), 300., com_z)
         coms = tf.concat([com_uv_global, com_z], axis=-1)
         return coms
 
@@ -87,7 +86,9 @@ class ComPreprocessor:
         if type(image) is tf.RaggedTensor:
             image = image.to_tensor()
         # NEW CENTER OF MASS (UV IS THE CENTER OF THE IMAGE)!
-        im_width, im_height = tf.shape(image)[:2]
+        img_shape = tf.shape(image)
+        im_width = img_shape[0]
+        im_height = img_shape[1]
         total_mass = tf.reduce_sum(image)
         total_mass = tf.cast(total_mass, dtype=tf.float32)
         image_mask = tf.cast(image > 0., dtype=tf.float32)
@@ -120,7 +121,9 @@ class ComPreprocessor:
             image = image.to_tensor()
 
         # Create all coordinate pairs
-        im_width, im_height = tf.shape(image)[:2]
+        img_shape = tf.shape(image)
+        im_width = img_shape[0]
+        im_height = img_shape[1]
         coords = create_coord_pairs(im_width, im_height, indexing='ij')
 
         image_mask = tf.cast(image > 0., dtype=tf.float32)
@@ -135,64 +138,9 @@ class ComPreprocessor:
         com_uvz = tf.math.divide_no_nan(volumes_uvz, nonzero_pixels)
         return com_uvz
 
-    def apply_otsus_thresholding(self, images, plot_image_before_thresholding=False,
-                                 plot_image_after_thresholding=False, plot_histogram=False):
-        def has_single_color(image):
-            image_min = tf.reduce_min(image)
-            image_max = tf.reduce_max(image)
-            return image_min == image_max
-
-        def is_valid_image(image):
-            if tf.size(image) == 0 or has_single_color(image):
-                return False
-            else:
-                return True
-
-        def apply_treshold(image_in):
-            if tf.size(image_in) == 0:
-                return image_in
-            if type(image_in) is tf.RaggedTensor:
-                image = image_in.to_tensor()
-
-            image_min = tf.reduce_min(image)
-
-            if plot_image_before_thresholding:
-                plot_depth_image(image)
-
-            # Apply otsu thresholding to remove background and leave closest object only
-            # However if there is another object in similar distance as a hand,
-            # then it fails to remove it. Then it is probably best to
-            # find the biggest countour.
-            indices = tf.where(image > image_min)
-            image_above_min = tf.gather_nd(image, indices)
-
-            if not is_valid_image(image_above_min):
-                return tf.RaggedTensor.from_tensor(image, ragged_rank=2)
-
-            image_above_min_numpy = image_above_min.numpy()
-            threshold_depth = filters.threshold_otsu(image_above_min_numpy)
-
-            # Apply thresholding only if the threshold_frequency
-            # is significantly low
-            peak_depth, peak_frequency = stats.mode(image_above_min_numpy)
-            unique, counts = np.unique(image_above_min_numpy, return_counts=True)
-            threshold_frequency = counts[unique == np.round(threshold_depth)]
-            if np.size(threshold_frequency) == 0:
-                threshold_frequency = 0
-            if plot_histogram:
-                print('Threshold:', threshold_depth)
-                plot_depth_image_histogram(image_above_min_numpy, True)
-                print(F"{threshold_frequency}/{peak_frequency}={float(threshold_frequency) / peak_frequency}")
-
-            if float(threshold_frequency) / peak_frequency < self.otsus_allowance_threshold:
-                # image_np[image_np > threshold_depth] = 0
-                image = tf.where(image > threshold_depth, 0, image)
-                image = tf.convert_to_tensor(image)
-            if plot_image_after_thresholding:
-                plot_depth_image(image)
-            return tf.RaggedTensor.from_tensor(image, ragged_rank=2)
-
-        return tf.map_fn(apply_treshold, images,
+    @timing
+    def apply_otsus_thresholding(self, images):
+        return tf.map_fn(lambda img: apply_threshold(img, self.otsus_allowance_threshold), images,
                          fn_output_signature=tf.RaggedTensorSpec(shape=[None, None, 1], dtype=images.dtype))
 
     def refine_coms(self, full_image, com, iters, cube_size):
@@ -267,8 +215,16 @@ class ComPreprocessor:
         """
 
         def crop(elems):
-            image, bcube = elems
-            x_start, y_start, z_start, x_end, y_end, z_end = bcube
+            image = elems[0]
+            bcube = elems[1]
+
+            x_start = bcube[0]
+            y_start = bcube[1]
+            z_start = bcube[2]
+            x_end = bcube[3]
+            y_end = bcube[4]
+            z_end = bcube[5]
+
             # Modify bcube because it is invalid to index with negatives.
             x_start_bound = tf.maximum(x_start, 0)
             y_start_bound = tf.maximum(y_start, 0)
@@ -310,8 +266,13 @@ class ComPreprocessor:
         """
 
         def crop(elems):
-            image, bbox = elems
-            x_start, y_start, x_end, y_end = bbox
+            image = elems[0]
+            bbox = elems[1]
+
+            x_start = bbox[0]
+            y_start = bbox[1]
+            x_end = bbox[2]
+            y_end = bbox[3]
 
             x_start_bound = tf.maximum(x_start, 0)
             y_start_bound = tf.maximum(y_start, 0)

@@ -1,5 +1,6 @@
 import numpy as np
 import tensorflow as tf
+from src.utils.debugging import timing
 
 
 class Camera:
@@ -96,7 +97,8 @@ class Camera:
         points_xyz = tf.cast(points_xyz, tf.float32)
 
         # Add ones for all points
-        new_shape = [points_xyz.shape[0], points_xyz.shape[1], 1]
+        points_shape = tf.shape(points_xyz)[:2]
+        new_shape = tf.concat([points_shape, [1]], axis=-1)
         points = tf.concat([points_xyz, tf.ones(new_shape, dtype=points_xyz.dtype)], axis=-1)
         # Project onto image plane
         projected_points = tf.matmul(self.projection_matrix, points, transpose_b=True)
@@ -110,6 +112,7 @@ class Camera:
             uvz = tf.squeeze(uvz, axis=0)
         return uvz
 
+    @timing
     def pixel_to_world(self, coords_uvz):
         if tf.rank(coords_uvz) == 2:
             points_uvz = coords_uvz[tf.newaxis, ...]
@@ -118,7 +121,10 @@ class Camera:
         points_uvz = tf.cast(points_uvz, tf.float32)
 
         multiplied_uv = points_uvz[..., 0:2] * points_uvz[..., 2:3]
-        ones = tf.ones([points_uvz.shape[0], points_uvz.shape[1], 1], dtype=points_uvz.dtype)
+
+        points_shape = tf.shape(points_uvz)[:2]
+        new_shape = tf.concat([points_shape, [1]], axis=-1)
+        ones = tf.ones(new_shape, dtype=points_uvz.dtype)
         multiplied_uvz1 = tf.concat([multiplied_uv, points_uvz[..., 2:3], ones], axis=-1)
         tranposed_xyz = tf.matmul(self.invr_projection_matrix, multiplied_uvz1, transpose_b=True)
         xyz = tf.transpose(tranposed_xyz, [0, 2, 1])[..., :3]

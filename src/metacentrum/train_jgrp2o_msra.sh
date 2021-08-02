@@ -1,7 +1,7 @@
 #!/bin/bash
 #PBS -N JGRP2O-MSRA
 #PBS -q gpu
-#PBS -l select=1:ncpus=32:ngpus=1:mem=42gb:cpu_flag=avx512dq:scratch_ssd=40gb
+#PBS -l select=1:ncpus=32:ngpus=1:mem=42gb:cpu_flag=avx512dq:scratch_ssd=40gb:gpu_cap=cuda75:cl_adan=True
 #PBS -l walltime=24:00:00
 #PBS -m abe
 
@@ -12,11 +12,11 @@ mkdir $SCRATCHDIR
 echo "$PBS_JOBID is running on node `hostname -f` in a scratch directory $SCRATCHDIR" >> $DATADIR/jobs_info.txt
 
 module add conda-modules-py37
-conda env remove -n ibt_msra
-conda create -n ibt_msra python=3.7
-conda activate ibt_msra
+conda env remove -n ibt
+conda create -n ibt python=3.7
+conda activate ibt
 conda install matplotlib
-conda install tensorflow
+conda install tensorflow-gpu
 conda install scikit-learn
 conda install scikit-image
 pip install opencv-python

@@ -1,7 +1,7 @@
 #!/bin/bash
 #PBS -N JGRP2O-BIGHAND
 #PBS -q gpu
-#PBS -l select=1:ncpus=32:ngpus=1:mem=42gb:cpu_flag=avx512dq:scratch_ssd=50gb
+#PBS -l select=1:ncpus=32:ngpus=1:mem=64gb:cpu_flag=avx512dq:scratch_ssd=50gb:gpu_cap=cuda75:cl_adan=True
 #PBS -l walltime=24:00:00
 #PBS -m abe
 
@@ -12,14 +12,14 @@ mkdir $SCRATCHDIR
 echo "$PBS_JOBID is running on node `hostname -f` in a scratch directory $SCRATCHDIR" >> $DATADIR/jobs_info.txt
 
 module add conda-modules-py37
-conda env remove -n ibt
-conda create -n ibt python=3.7
-conda activate ibt
+conda env remove -n ibt_bighand
+conda create -n ibt_bighand python=3.7
+conda activate ibt_bighand
 conda install matplotlib
-conda install tensorflow
+conda install tensorflow-gpu
 conda install scikit-learn
+conda install scikit-image
 pip install opencv-python
-pip install scikit-image
 pip install gast==0.3.3
 pip install tensorflow-addons
 conda list
@@ -40,16 +40,31 @@ cp -r "$DATADIR/datasets/bighand/Subject_1.tar" "$SCRATCHDIR/datasets" || { echo
 # Extract it
 tar -xf "$SCRATCHDIR/datasets/Subject_1.tar" -C "$SCRATCHDIR/datasets/bighand" || { echo >&2 "Couldnt extract Subject_1.tar"; exit 2; }
 
+# Copy Subject_2.tar
 cp -r "$DATADIR/datasets/bighand/Subject_2.tar" "$SCRATCHDIR/datasets" || { echo >&2 "Couldnt copy Subject_2.tar"; exit 2; }
+# Extract it
 tar -xf "$SCRATCHDIR/datasets/Subject_2.tar" -C "$SCRATCHDIR/datasets/bighand" || { echo >&2 "Couldnt extract Subject_2.tar"; exit 2; }
 
-cp -r "$DATADIR/datasets/bighand/Subject_3.tar" "$SCRATCHDIR/datasets" || { echo >&2 "Couldnt copy Subject_3.tar"; exit 2; }
-tar -xf "$SCRATCHDIR/datasets/Subject_3.tar" -C "$SCRATCHDIR/datasets/bighand" || { echo >&2 "Couldnt extract Subject_3.tar"; exit 2; }
+# Copy Subject_4.tar
+cp -r "$DATADIR/datasets/bighand/Subject_4.tar" "$SCRATCHDIR/datasets" || { echo >&2 "Couldnt copy Subject_4.tar"; exit 2; }
+tar -xf "$SCRATCHDIR/datasets/Subject_4.tar" -C "$SCRATCHDIR/datasets/bighand" || { echo >&2 "Couldnt extract Subject_4.tar"; exit 2; }
+
+# Copy Subject_5.tar
+cp -r "$DATADIR/datasets/bighand/Subject_5.tar" "$SCRATCHDIR/datasets" || { echo >&2 "Couldnt copy Subject_5.tar"; exit 2; }
+tar -xf "$SCRATCHDIR/datasets/Subject_5.tar" -C "$SCRATCHDIR/datasets/bighand" || { echo >&2 "Couldnt extract Subject_5.tar"; exit 2; }
+
+# Copy Subject_6.tar
+cp -r "$DATADIR/datasets/bighand/Subject_6.tar" "$SCRATCHDIR/datasets" || { echo >&2 "Couldnt copy Subject_6.tar"; exit 2; }
+tar -xf "$SCRATCHDIR/datasets/Subject_6.tar" -C "$SCRATCHDIR/datasets/bighand" || { echo >&2 "Couldnt extract Subject_6.tar"; exit 2; }
+
+# Copy Subject_7.tar
+cp -r "$DATADIR/datasets/bighand/Subject_7.tar" "$SCRATCHDIR/datasets" || { echo >&2 "Couldnt copy Subject_7.tar"; exit 2; }
+tar -xf "$SCRATCHDIR/datasets/Subject_7.tar" -C "$SCRATCHDIR/datasets/bighand" || { echo >&2 "Couldnt extract Subject_7.tar"; exit 2; }
 
 cp -r "$DATADIR/saved_models" "$SCRATCHDIR/" || { echo >&2 "Couldnt copy saved models"; exit 2; }
 
 export PYTHONPATH=$SCRATCHDIR
-python3 $SCRATCHDIR/src/estimation/train.py --train bighand --model "$SCRATCHDIR/saved_models/210330-024055/weights.52.h5"
+python3 $SCRATCHDIR/src/estimation/train.py --train bighand --model "$SCRATCHDIR/saved_models/20210425-122826/weights.26.h5"
 
 cp -r $SCRATCHDIR/logs $DATADIR/ || { echo >&2 "Couldnt copy logs to datadir."; exit 3; }
 cp -r $SCRATCHDIR/saved_models $DATADIR/ || { echo >&2 "Couldnt copy saved_models to datadir."; exit 3; }

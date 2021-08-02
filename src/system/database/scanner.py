@@ -42,7 +42,8 @@ class UsecaseDatabaseScanner:
             if count == num_samples:
                 break
             time_start = time.time()
-            joints_uvz = self.estimator.estimate_from_image(image)
+            joints_uvz, image_subregion, joints_subregion, bboxes = \
+                self.estimator.estimate_from_image(image)
             if joints_uvz is None:
                 continue
             joints_xyz = self.camera.pixel_to_world(joints_uvz)

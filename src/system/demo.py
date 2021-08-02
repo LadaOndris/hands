@@ -9,9 +9,11 @@ from src.acceptance.base import fit_plane_through_hand, hand_orientation, joint_
     vectors_angle
 from src.acceptance.gesture_acceptance_result import GestureAcceptanceResult
 from src.detection.plots import image_plot
+from src.estimation.preprocessing import convert_coords_to_global
 from src.system.database.reader import UsecaseDatabaseReader
 from src.system.hand_position_estimator import HandPositionEstimator
 from src.utils.camera import Camera
+from src.utils.debugging import timing
 from src.utils.imaging import average_nonzero_depth
 
 
@@ -61,7 +63,8 @@ class GestureRecognizer:
             if tf.rank(image_array) == 4:
                 image_array = image_array[0]
 
-            joints_uvz = self.estimator.estimate_from_image(image_array)
+            joints_uvz, image_subregion, joints_subregion, bboxes = \
+                self.estimator.estimate_from_image(image_array)
 
             # Detection failed, continue to next image
             if joints_uvz is None:
@@ -70,10 +73,6 @@ class GestureRecognizer:
             acceptance_result = self.accept_gesture(joints_xyz)
             if generator_includes_labels:
                 acceptance_result.expected_gesture_label = gesture_label.numpy()
-
-            # plot the hand position with gesture label
-            image_subregion = self.estimator.get_cropped_image()
-            joints_subregion = self.estimator.convert_to_cropped_coords(joints_uvz)
 
             mean_depth = average_nonzero_depth(image_subregion[tf.newaxis, ...])[0]
             tf.print(F"Depth: {mean_depth / 10:.0f} cm")
@@ -84,12 +83,14 @@ class GestureRecognizer:
             if self.plot_hand_only:
                 self.plot(acceptance_result, image_subregion, joints_subregion, norm, mean)
             else:
-                mean = tf.squeeze(self.estimator.convert_to_global_coords(mean))
+                mean = tf.squeeze(convert_coords_to_global(mean, bboxes))
                 self.plot(acceptance_result, self.estimator.resized_image, joints_uvz, norm, mean)
 
             image_idx += 1
+            print(image_idx)
             yield acceptance_result
 
+    @timing
     def accept_gesture(self, keypoints: np.ndarray) -> GestureAcceptanceResult:
         """
         Compares given keypoints to the ones stored in the database

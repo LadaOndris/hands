@@ -1,8 +1,8 @@
 #!/bin/bash
 #PBS -N YoloV3Depth-Handseg
 #PBS -q gpu
-#PBS -l select=1:ncpus=24:ngpus=1:mem=48gb:cpu_flag=avx512dq:scratch_local=25gb
-#PBS -l walltime=20:00:00
+#PBS -l select=1:ncpus=24:ngpus=1:mem=64gb:cpu_flag=avx512dq:scratch_ssd=50gb:gpu_cap=cuda75:cl_adan=True
+#PBS -l walltime=24:00:00
 #PBS -m abe
 
 DATADIR=/storage/brno6/home/ladislav_ondris/IBT
@@ -16,10 +16,10 @@ conda env remove -n ibt
 conda create -n ibt python=3.7
 conda activate ibt
 conda install matplotlib
-conda install tensorflow
+conda install tensorflow-gpu
 conda install scikit-learn
+conda install scikit-image
 pip install opencv-python
-pip install scikit-image
 pip install gast==0.3.3
 pip install tensorflow-addons
 conda list
