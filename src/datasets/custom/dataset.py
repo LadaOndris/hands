@@ -2,7 +2,7 @@ import numpy as np
 import tensorflow as tf
 
 import src.utils.plots as plots
-from src.utils.imaging import read_image_from_file
+from src.utils.imaging import read_image_from_file, set_depth_unit
 from src.utils.paths import CUSTOM_DATASET_DIR
 
 
@@ -78,6 +78,17 @@ class CustomDataset:
 
     def _prepare_sample(self, image_path, label):
         image = read_image_from_file(image_path, dtype=tf.uint16, shape=[640, 480])
+
+        # Correct depth unit
+        unit_mm = 0.001
+        unit_previous = 0.000125
+        image = set_depth_unit(image,
+                               target_depth_unit=unit_mm,
+                               previous_depth_unit=unit_previous)
+        image = tf.cast(image, dtype=tf.float32)
+        # Replace values above 1500 mm with background
+        image = tf.where(image < 1500, image, 0)
+
         return image, label
 
     def __iter__(self):

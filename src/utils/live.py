@@ -15,7 +15,7 @@ def generate_live_images():
             frameset = pipe.wait_for_frames()
             depth_frame = frameset.get_depth_frame()
             depth_image = np.array(depth_frame.get_data())
-            depth_image = depth_image[..., np.newaxis]
+            depth_image = depth_image[..., np.newaxis] / 8.0
 
             yield depth_image
 

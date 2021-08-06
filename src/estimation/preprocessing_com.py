@@ -19,6 +19,7 @@ class ComPreprocessor:
             self.com_function = self.center_of_mass
 
     @timing
+    @tf.function
     def refine_bcube_using_com(self, full_image, bbox, refine_iters=3, cube_size=(250, 250, 250)):
         """
         Refines the bounding box of the detected hand
@@ -195,6 +196,7 @@ class ComPreprocessor:
         bcube = tf.concat([bcube_start_uv, bcube_start_z, bcube_end_uv, bcube_end_z], axis=-1)
         return tf.cast(bcube, dtype=tf.int32)
 
+    @tf.function
     def crop_bcube(self, images, bcubes):
         """
         Crops the image using a bounding cube. It is

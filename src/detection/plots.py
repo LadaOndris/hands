@@ -20,10 +20,11 @@ def plot_predictions_live(fig, ax, image, boxes, nums):
 
 def _plot_predictions(fig, ax, image, boxes, nums):
     ax.imshow(image, cmap=depth_image_cmap)
-
+    if tf.is_tensor(boxes):
+        boxes = boxes.numpy()
     for i in range(nums):
-        x, y = boxes[i, 0:2].numpy()
-        w, h = (boxes[i, 2:4] - boxes[i, 0:2]).numpy()
+        x, y = boxes[i, 0:2]
+        w, h = (boxes[i, 2:4] - boxes[i, 0:2])
         plot_prediction_box(ax, x, y, w, h)
 
     plot_adjust(fig, ax)
