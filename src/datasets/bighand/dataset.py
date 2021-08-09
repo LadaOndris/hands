@@ -122,8 +122,6 @@ class BighandDataset:
             0, 1, 6, 7, 8, 2, 9, 10, 11, 3, 12, 13, 14, 4, 15, 16, 17, 5, 18, 19, 20
         ], dtype=tf.int32)
         joints = tf.gather(joints, reorder_idx)
-        # tf.print("annot", annotation_line)
-        # tf.print("joint", joints)
         return depth_image, joints
 
 
