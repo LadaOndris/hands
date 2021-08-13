@@ -221,7 +221,7 @@ class HandPositionEstimator:
             if fig_location is None:
                 src.detection.plots.plot_predictions_live(self.fig, self.ax, images[0], boxes[0], nums[0])
             else:
-                src.detection.plots.plot_predictions(images[0], boxes[0], nums[0], fig_location)
+                src.detection.plots.plot_predictions(images[0], boxes[0], fig_location)
 
     @timing
     @tf.function

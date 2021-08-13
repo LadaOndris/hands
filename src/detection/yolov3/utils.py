@@ -40,32 +40,6 @@ def bbox_iou(boxes1, boxes2):
     return np.nan_to_num(intersection_area / union_area)
 
 
-def tensorflow_bbox_iou(boxes1, boxes2):
-    boxes1 = tf.cast(boxes1, dtype=tf.float32)
-    boxes2 = tf.cast(boxes2, dtype=tf.float32)
-
-    boxes1_area = boxes1[..., 2] * boxes1[..., 3]
-    boxes2_area = boxes2[..., 2] * boxes2[..., 3]
-
-    boxes1_xy, boxes1_wh = tf.split(boxes1, [2, 2], axis=-1)
-    boxes2_xy, boxes2_wh = tf.split(boxes2, [2, 2], axis=-1)
-
-    boxes1 = tf.concat([boxes1_xy - boxes1_wh * 0.5,
-                        boxes1_xy + boxes1_wh * 0.5], axis=-1)
-    boxes2 = tf.concat([boxes2_xy - boxes2_wh * 0.5,
-                        boxes2_xy + boxes2_wh * 0.5], axis=-1)
-
-    left_up = tf.maximum(boxes1[..., :2], boxes2[..., :2])
-    right_down = tf.minimum(boxes1[..., 2:], boxes2[..., 2:])
-
-    inter_section = tf.maximum(right_down - left_up, 0.0)
-    inter_area = inter_section[..., 0] * inter_section[..., 1]
-    union_area = boxes1_area + boxes2_area - inter_area
-    iou = 1.0 * tf.math.divide_no_nan(inter_area, union_area)
-
-    return tf.where(tf.math.is_nan(iou), tf.zeros_like(iou), iou)
-
-
 def non_max_suppression(inputs, model_size, max_output_size,
                         max_output_size_per_class, iou_threshold, confidence_threshold):
     """

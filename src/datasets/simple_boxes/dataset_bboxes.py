@@ -1,9 +1,11 @@
 import tensorflow as tf
 import numpy as np
-import os
+
+from datasets.dataset_base import DatasetBase
+from src.utils.imaging import resize_image_and_bboxes
 
 
-class SimpleBoxesDataset:
+class SimpleBoxesDataset(DatasetBase):
     """
     The SimpleBoxesDataset is a simple dataset for experimentation
     with an object detector. It is much easier to train than a true
@@ -11,43 +13,38 @@ class SimpleBoxesDataset:
     background color and two filled circles of different sizes.
     """
 
-    def __init__(self, dataset_path, type, train_size, batch_size=16):
-        if type != 'train' and type != 'test':
-            raise ValueError("Invalid dataset type {type}")
-        if train_size < 0 or train_size > 1:
-            raise ValueError("Train_size expected to be in range [0, 1], but got {train_size}.")
-
-        self.dataset_path = dataset_path
+    def __init__(self, dataset_path, train_size, img_size, batch_size=16,
+                 prepare_output_fn=None, prepare_output_shape=None):
+        super().__init__(dataset_path)
         self.type = type
         self.train_size = train_size
+        self.img_size = img_size
         self.batch_size = batch_size
         self.batch_index = 0
+        self.prepare_output_fn = prepare_output_fn
+        self.prepare_output_shape = prepare_output_shape
 
-        self.annotations = self._load_annotations()
-        print("Dataset len", len(self.annotations))
-        self.num_samples = len(self.annotations)
-        self.num_batches = int(np.ceil(self.num_samples / self.batch_size))
+        self.train_annotations, self.test_annotations = self.load_annotations('bboxes.txt', self.train_size)
+        self.num_train_samples = len(self.train_annotations)
+        self.num_test_samples = len(self.test_annotations)
+        self.num_train_batches = int(np.math.ceil(self.num_train_samples / self.batch_size))
+        self.num_test_batches = int(np.math.ceil(self.num_test_samples / self.batch_size))
 
-        self.batch_iterator = self._build_iterator()
-        return
+        self.train_dataset = self._build_iterator(self.train_annotations)
+        self.test_dataset = self._build_iterator(self.test_annotations)
 
-    def _load_annotations(self):
-        annotations_path = os.path.join(self.dataset_path, 'bboxes.txt')
-        with open(annotations_path, 'r') as f:
-            annotations = f.readlines()
-
-        boundary_index = int(len(annotations) * self.train_size)
-        if type == 'train':
-            return annotations[:boundary_index]
-        else:
-            return annotations[boundary_index:]
-
-    def _build_iterator(self):
-        dataset = tf.data.Dataset.from_tensor_slices(self.annotations)
+    def _build_iterator(self, annotations):
+        dataset = tf.data.Dataset.from_tensor_slices(annotations)
         dataset = dataset.repeat()
-        dataset = dataset.shuffle(len(self.annotations), reshuffle_each_iteration=True)
+        dataset = dataset.shuffle(len(annotations), reshuffle_each_iteration=True)
         dataset = dataset.map(self._prepare_sample)
-        shapes = (tf.TensorShape([416, 416, 1]), tf.TensorShape([None, 4]))
+        image_shape = tf.TensorShape([self.img_size[0], self.img_size[1], 1])
+        if self.prepare_output_fn:
+            dataset = dataset.map(self.prepare_output_fn)
+            output_shape = self.prepare_output_shape
+        else:
+            output_shape = tf.TensorShape([None, 4])
+        shapes = (image_shape, output_shape)
         dataset = dataset.padded_batch(self.batch_size, padded_shapes=shapes)
         dataset = dataset.prefetch(buffer_size=1)
         return dataset
@@ -61,11 +58,18 @@ class SimpleBoxesDataset:
 
         depth_image_file_content = tf.io.read_file(image_file_path)
         # loads depth images and converts values to fit in dtype.uint8
-        depth_image = tf.io.decode_image(depth_image_file_content, channels=1)
-        depth_image.set_shape([416, 416, 1])
-        # depth_image /= 255 # normalize to range [0, 1]
+        depth_image = tf.io.decode_png(depth_image_file_content, channels=1)
 
         bboxes = tf.reshape(annotation_parts[1:], shape=[-1, 4])
-        bboxes = tf.strings.to_number(bboxes, out_type=tf.float32)
+        bboxes = tf.strings.to_number(bboxes)
+
+        depth_image, bboxes = resize_image_and_bboxes(depth_image, bboxes, self.img_size)
+
+        # Normalize values to range [0, 1]
+        depth_image /= 255
+        bboxes /= [self.img_size[0], self.img_size[1], self.img_size[0], self.img_size[1]]
+
+        # Y axis first
+        bboxes = tf.stack([bboxes[..., 1], bboxes[..., 0], bboxes[..., 3], bboxes[..., 2]], axis=-1)
 
         return depth_image, bboxes

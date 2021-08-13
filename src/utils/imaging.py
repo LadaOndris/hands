@@ -1,4 +1,5 @@
 import tensorflow as tf
+
 from src.utils.debugging import timing
 
 RESIZE_MODE_CROP = 'crop'
@@ -57,6 +58,7 @@ def tf_resize_image(depth_image, shape, resize_mode: str):
     # depth_image = tf.where(depth_image > 2000, 0, depth_image)
     depth_image = tf.cast(depth_image, dtype=type)
     return depth_image
+
 
 def resize_bilinear_nearest(image_in, shape):
     img_shape = tf.shape(image_in)
@@ -231,6 +233,7 @@ def read_image_from_file(image_file_path, dtype, shape):
     depth_image.set_shape([shape[1], shape[0], 1])
     return depth_image
 
+
 @timing
 def average_nonzero_depth(images):
     """
@@ -247,7 +250,7 @@ def average_nonzero_depth(images):
         A 1-D Tensor of shape [batch].
     """
     # TODO
-    #if tf.rank(images) != 4:
+    # if tf.rank(images) != 4:
     #    raise TypeError(F"Invalid rank: {tf.rank(images)}, expected 4.")
 
     axes = [1, 2, 3]
@@ -255,6 +258,7 @@ def average_nonzero_depth(images):
     counts = tf.math.count_nonzero(images, axis=axes, dtype=sums.dtype)
     mean = tf.math.divide_no_nan(sums, counts)
     return mean
+
 
 #
 # @tf.function(input_signature=(
@@ -291,7 +295,7 @@ def crop_with_pad(image, bbox):
 
 
 def zoom_in(depth_image, bboxes, zoom=None, new_distance=None):
-    #if tf.shape(bboxes)[0] == 0:
+    # if tf.shape(bboxes)[0] == 0:
     #    raise ValueError("There is no bounding box. Unable to zoom in.")
     if zoom is None and new_distance is None:
         raise ValueError("Zoom factor and new distance cannot be both None.")
@@ -371,6 +375,14 @@ def _zoom_depth(image, new_depth, previous_depth):
     zoom_distance = new_depth - previous_depth
     zoomed_image = tf.where(image > 0, image + zoom_distance, 0)
     return zoomed_image
+
+
+def resize_image_and_bboxes(image, bboxes, target_img_shape):
+    y_ratio = target_img_shape[0] / tf.shape(image)[0]
+    x_ratio = target_img_shape[1] / tf.shape(image)[1]
+    resized_image = tf.image.resize(image, target_img_shape)
+    bboxes *= [x_ratio, y_ratio, x_ratio, y_ratio]
+    return resized_image, bboxes
 
 
 if __name__ == "__main__":

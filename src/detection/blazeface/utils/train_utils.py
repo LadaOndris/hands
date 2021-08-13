@@ -1,0 +1,81 @@
+import tensorflow as tf
+
+from src.utils import bbox_utils
+
+
+def get_hyper_params(**kwargs):
+    """Generating hyper params in a dynamic way.
+    inputs:
+        **kwargs = any value could be updated in the hyper_params
+    outputs:
+        hyper_params = dictionary
+    """
+    hyper_params = {
+        "batch_size": 16,
+        "learning_rate": 0.001,
+        "learning_decay_rate": 0.97,
+        "img_size": 256,
+        "feature_map_shapes": [8, 8, 8, 16, 32, 64],
+        "aspect_ratios": [[1.], [1.], [1.], [1.], [1.], [1.]],
+        "detections_per_layer": [6, 2, 2, 2],
+        "iou_threshold": 0.4,
+        "neg_pos_ratio": 3,
+        "loc_loss_alpha": 1,
+        "variances": [0.1, 0.1, 0.2, 0.2],
+    }
+    for key, value in kwargs.items():
+        if key in hyper_params and value:
+            hyper_params[key] = value
+    return hyper_params
+
+
+def prepare_expected_output_fn(prior_boxes, hyper_params):
+    def _prepare_output(image, boxes):
+        deltas, labels = calculate_expected_outputs(prior_boxes, boxes, hyper_params)
+        # We are preparing a single sample -> remove the batch axis.
+        deltas = tf.squeeze(deltas, axis=0)
+        labels = tf.squeeze(labels, axis=0)
+        return image, (deltas, labels)
+    return _prepare_output
+
+
+def calculate_expected_outputs(prior_boxes, gt_boxes, hyper_params):
+    """Calculate ssd actual output values.
+    Batch operations supported.
+    inputs:
+        prior_boxes = (total_bboxes, [center_x, center_y, width, height])
+            these values in normalized format between [0, 1]
+        gt_boxes = (batch_size, gt_box_size, [y1, x1, y2, x2])
+            these values in normalized format between [0, 1]
+        hyper_params = dictionary
+    outputs:
+        actual_deltas = (batch_size, total_bboxes, [delta_bbox_y, delta_bbox_x, delta_bbox_h, delta_bbox_w])
+        actual_labels = (batch_size, total_bboxes, [1 or 0])
+    """
+    # In case of no ground truth boxes
+    total_bboxes = tf.shape(prior_boxes)[0]
+    batch_size = tf.shape(gt_boxes)[0]
+    gt_box_size = tf.shape(gt_boxes)[1]
+    if gt_box_size == 0:
+        deltas = tf.zeros(shape=[batch_size, total_bboxes, 4])
+        labels = tf.zeros(shape=[batch_size, total_bboxes, 1])
+        return deltas, labels
+
+    iou_threshold = hyper_params["iou_threshold"]
+    # variances = hyper_params["variances"]
+    gt_boxes = tf.expand_dims(gt_boxes, axis=0)
+    # Calculate iou values between each bboxes and ground truth boxes
+    iou_map = bbox_utils.generate_iou_map(bbox_utils.convert_xywh_to_bboxes(prior_boxes), gt_boxes)
+    # Get max index value for each row
+    max_indices_each_gt_box = tf.argmax(iou_map, axis=2, output_type=tf.int32)
+    # IoU map has iou values for every gt boxes and we merge these values column wise
+    merged_iou_map = tf.reduce_max(iou_map, axis=2)
+    #
+    pos_cond = tf.greater(merged_iou_map, iou_threshold)
+    #
+    gt_boxes_map = tf.gather(gt_boxes, max_indices_each_gt_box, batch_dims=1)
+    expanded_gt_boxes = tf.where(tf.expand_dims(pos_cond, -1), gt_boxes_map, tf.zeros_like(gt_boxes_map))
+    actual_deltas = bbox_utils.get_deltas_from_bboxes(prior_boxes, expanded_gt_boxes)
+    # actual_deltas /= variances
+    actual_labels = tf.expand_dims(tf.cast(pos_cond, dtype=tf.float32), -1)
+    return actual_deltas, actual_labels

@@ -17,9 +17,9 @@ def train(batch_size, learning_rate, train_size=0.8, decay_rate=0.94):
     handseg_dataset = HandsegDatasetBboxes(HANDSEG_DATASET_DIR, train_size=train_size,
                                            model_input_shape=model.input_shape,
                                            batch_size=batch_size)
-    train_dataset_generator = DatasetPreprocessor(handseg_dataset.train_batch_iterator,
+    train_dataset_generator = DatasetPreprocessor(handseg_dataset.train_dataset,
                                                   model.input_shape, yolo_out_shapes, model.anchors)
-    test_dataset_generator = DatasetPreprocessor(handseg_dataset.test_batch_iterator,
+    test_dataset_generator = DatasetPreprocessor(handseg_dataset.test_dataset,
                                                  model.input_shape, yolo_out_shapes, model.anchors)
 
     lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(

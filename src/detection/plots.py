@@ -7,22 +7,38 @@ from src.detection.yolov3.utils import blue_color, boxes_color, boxes_from_yolo_
 from src.utils.plots import plotlive, save_show_fig
 
 
-def plot_predictions(image, boxes, nums, fig_location):
+def draw_bboxes(imgs, bboxes):
+    """Drawing bounding boxes on given images.
+    inputs:
+        imgs = (batch_size, height, width, channels)
+        bboxes = (batch_size, total_bboxes, [y1, x1, y2, x2])
+            in normalized form [0, 1]
+    """
+    colors = tf.constant([[1, 0, 0]], dtype=tf.float32)
+    imgs_with_bb = tf.image.draw_bounding_boxes(imgs, bboxes, colors)
+
+    for img_with_bb in imgs_with_bb:
+        fig, ax = image_plot()
+        ax.imshow(img_with_bb, cmap=depth_image_cmap)
+        save_show_fig(fig, None, True)
+
+
+def plot_predictions(image, boxes, fig_location):
     fig, ax = image_plot()
-    _plot_predictions(fig, ax, image, boxes, nums)
+    _plot_predictions(fig, ax, image, boxes)
     save_show_fig(fig, fig_location, True)
 
 
 @plotlive
-def plot_predictions_live(fig, ax, image, boxes, nums):
-    _plot_predictions(fig, ax, image, boxes, nums)
+def plot_predictions_live(fig, ax, image, boxes):
+    _plot_predictions(fig, ax, image, boxes)
 
 
-def _plot_predictions(fig, ax, image, boxes, nums):
+def _plot_predictions(fig, ax, image, boxes):
     ax.imshow(image, cmap=depth_image_cmap)
     if tf.is_tensor(boxes):
         boxes = boxes.numpy()
-    for i in range(nums):
+    for i in range(boxes.shape[0]):
         x, y = boxes[i, 0:2]
         w, h = (boxes[i, 2:4] - boxes[i, 0:2])
         plot_prediction_box(ax, x, y, w, h)
@@ -93,7 +109,7 @@ def plot_detected_objects(images, yolo_outputs, model_size, conf_thresh, max_box
         if draw_cells:
             plot_predictions_with_cells(images[i], boxes[i], nums[i], stride, fig_location)
         else:
-            plot_predictions(images[i], boxes[i], nums[i], fig_location)
+            plot_predictions(images[i], boxes[i], fig_location)
 
 
 def plot_grid_detection(images, yolo_outputs, model_size, conf_thresh, fig_location=None):

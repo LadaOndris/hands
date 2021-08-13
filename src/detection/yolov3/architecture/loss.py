@@ -1,6 +1,7 @@
 import tensorflow as tf
 import numpy as np
 
+import src.utils.bbox_utils
 from src.detection.yolov3 import utils
 
 """
@@ -79,7 +80,7 @@ class YoloLoss(tf.keras.losses.Loss):
         # We need to compensate for the different box sizes, 
         # so that the model is trained equally for small boxes and big boxes.
         bbox_loss_scale = 2.0 - true_xywh[..., 2:3] * true_xywh[..., 3:4] / (input_size ** 2)
-        iou = utils.tensorflow_bbox_iou(pred_xywh[:, :, :, :, np.newaxis, :], true_xywh[:, :, :, :, np.newaxis, :])
+        iou = src.utils.bbox_utils.bbox_ious(pred_xywh[:, :, :, :, np.newaxis, :], true_xywh[:, :, :, :, np.newaxis, :])
 
         # If IOU = 0, then the boxes don't overlap - the worst result.
         # If IOU = 1, then the boxes overlap exactly - the best result.
@@ -97,7 +98,7 @@ class YoloLoss(tf.keras.losses.Loss):
         bboxes_mask = tf.cast(bboxes_mask, dtype=tf.bool)
         bboxes = tf.boolean_mask(true_xywh, bboxes_mask[..., 0])
 
-        iou = utils.tensorflow_bbox_iou(pred_xywh[:, :, :, :, np.newaxis, :], bboxes)
+        iou = src.utils.bbox_utils.bbox_ious(pred_xywh[:, :, :, :, np.newaxis, :], bboxes)
         # max_iou.shape for example (16, 26, 26, 3, 1)
         max_iou = tf.expand_dims(tf.reduce_max(iou, axis=-1), axis=-1)
 

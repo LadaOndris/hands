@@ -17,7 +17,7 @@ images_path = str(SIMPLE_DATASET_DIR.joinpath('images'))
 os.makedirs(images_path, exist_ok=True)
 
 image_size = (416, 416, 1)
-dataset_size = 10
+dataset_size = 2000
 
 value = 150
 radius_range = (10, 60)
@@ -34,6 +34,7 @@ centers = np.where(centers > 416 - radiuses, centers - radiuses, centers)
 
 lines = []
 for i, (center, radius) in enumerate(zip(centers, radiuses)):
+    radius = np.squeeze(radius)
     topleft = center - radius
     rightbottom = center + radius
 

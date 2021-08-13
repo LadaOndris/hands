@@ -35,7 +35,7 @@ def foo():
 
 def depth_hist():
     dataset = HandsegDatasetBboxes(batch_size=16, dataset_path=HANDSEG_DATASET_DIR, train_size=0.8, )
-    for batch_images, batch_bboxes in dataset.train_batch_iterator:
+    for batch_images, batch_bboxes in dataset.train_dataset:
         plt.hist(batch_images.numpy().flatten(), np.linspace(1, tf.reduce_max(batch_images), 100))
         break
 
@@ -68,7 +68,7 @@ def show_images_from_handseg_dataset(num, dataset_path, save_fig_loc=None):
 
 
 def show_images_with_bboxes(dataset):
-    for batch_images, batch_bboxes in dataset.train_batch_iterator:
+    for batch_images, batch_bboxes in dataset.train_dataset:
         for image, bboxes in zip(batch_images, batch_bboxes):
             fig, ax = plt.subplots(1)
             ax.imshow(np.squeeze(image, axis=-1))
@@ -148,8 +148,8 @@ def generate_bounding_boxes(print_images=False, save_to_file=False, bboxes_filen
 
 def analyse_pixel_distance():
     dataset = HandsegDatasetBboxes(batch_size=16, dataset_path=HANDSEG_DATASET_DIR, train_size=0.8,
-                                   model_input_shape=[416, 416])
-    for batch_images, batch_bboxes in dataset.train_batch_iterator:
+                                   img_size=[416, 416])
+    for batch_images, batch_bboxes in dataset.train_dataset:
         img = batch_images[0].numpy()
         plt.hist(img[img >0], bins=100)
         plt.show()
@@ -164,7 +164,7 @@ if __name__ == '__main__':
     # depth_hist()
     # analyse_pixel_distance()
     dataset = HandsegDatasetBboxes(batch_size=3, dataset_path=HANDSEG_DATASET_DIR, train_size=0.8,
-                                   model_input_shape=[416, 416], augment=True)
+                                   img_size=[416, 416], augment=True)
     show_images_with_bboxes(dataset)
     # generate_bounding_boxes(print_images=False, save_to_file=False,
     #                        bboxes_filename='bounding_boxes.txt')

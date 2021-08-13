@@ -2,6 +2,7 @@ import numpy as np
 import tensorflow as tf
 from sklearn.metrics import precision_recall_curve
 
+import src.utils.bbox_utils
 import src.utils.plots as plots
 from src.datasets.handseg.dataset_bboxes import HandsegDatasetBboxes
 from src.detection.yolov3 import utils
@@ -28,7 +29,7 @@ def evaluate(weights_path, batch_size=32):
     model = YoloLoader.load_from_weights(RESIZE_MODE_CROP, weights_path=weights_path, batch_size=batch_size)
     handseg = HandsegDatasetBboxes(HANDSEG_DATASET_DIR, train_size=0.99, batch_size=batch_size,
                                    shuffle=False, model_input_shape=model.input_shape)
-    test_dataset_generator = DatasetPreprocessor(handseg.test_batch_iterator,
+    test_dataset_generator = DatasetPreprocessor(handseg.test_dataset,
                                                  model.input_shape, model.yolo_output_shapes, model.anchors)
 
     batch_idx = 0
@@ -104,7 +105,7 @@ def compute_iou(y_pred_pkl, y_true_pkl):
     pred_xywh = y_pred[..., 0:4]
     true_xywh = y_true[..., 0:4]
     true_conf = y_true[..., 4:5]
-    iou_for_all_boxes = utils.tensorflow_bbox_iou(pred_xywh[:, :, :, np.newaxis, :],
+    iou_for_all_boxes = src.utils.bbox_utils.bbox_ious(pred_xywh[:, :, :, np.newaxis, :],
                                                   true_xywh[:, :, :, np.newaxis, :])
     iou_for_true_boxes = true_conf * iou_for_all_boxes
     ious_sum = tf.reduce_sum(iou_for_true_boxes)

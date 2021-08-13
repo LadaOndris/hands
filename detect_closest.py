@@ -43,7 +43,7 @@ for images in image_source:
     cropped_imgs = preprocessor.crop_bcube(images, bcubes).numpy()
     bboxes = np.concatenate([bcubes[..., 0:2], bcubes[..., 3:5]], axis=-1)
 
-    plot_predictions_live(fig, ax, images[0], boxes, boxes.shape[0])
+    plot_predictions_live(fig, ax, images[0], boxes)
 
     i += 1
     print(i, 'Bounding boxes:', bboxes)

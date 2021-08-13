@@ -2,6 +2,7 @@ import numpy as np
 import tensorflow as tf
 
 import src.detection.yolov3.utils as utils
+import src.utils.bbox_utils
 
 
 def get_positives_and_negatives(y_true, y_pred, conf_threshold):
@@ -101,7 +102,7 @@ class YoloBoxesIoU(tf.keras.metrics.Metric):
         true_boxes = y_true[..., 0:4]
         pred_boxes = y_pred[..., 0:4]
 
-        ious = utils.tensorflow_bbox_iou(true_boxes[..., np.newaxis, :],
+        ious = src.utils.bbox_utils.bbox_ious(true_boxes[..., np.newaxis, :],
                                          pred_boxes[..., np.newaxis, :])
 
         # Take into account only IoU of true boxes

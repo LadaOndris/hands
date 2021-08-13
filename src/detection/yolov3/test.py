@@ -13,7 +13,7 @@ def predict_on_handseg(plot_prediction=False, plot_prediction_with_grid=False, p
     model = YoloLoader.load_from_weights(RESIZE_MODE_CROP, batch_size=batch_size)
     handseg = HandsegDatasetBboxes(HANDSEG_DATASET_DIR, train_size=0.99, batch_size=batch_size,
                                    shuffle=False, model_input_shape=model.input_shape)
-    preprocessor = DatasetPreprocessor(handseg.test_batch_iterator,
+    preprocessor = DatasetPreprocessor(handseg.test_dataset,
                                        model.input_shape, model.yolo_output_shapes, model.anchors)
 
     for batch_images, batch_bboxes in preprocessor:
