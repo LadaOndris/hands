@@ -9,8 +9,11 @@ other/
 saved_models/ 
 text_src/
 
-datasets/handseg/images
-datasets/handseg/masks
+datasets/mhp
+datasets/tvhand
+
+datasets/handseg150k/images
+datasets/handseg150k/masks
 
 datasets/simple_boxes/images
 datasets/simple_boxes/bboxes.txt
