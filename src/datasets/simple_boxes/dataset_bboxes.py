@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 
-from datasets.dataset_base import DatasetBase
+from src.datasets.dataset_base import DatasetBase
 from src.utils.imaging import resize_image_and_bboxes
 
 

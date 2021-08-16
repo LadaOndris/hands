@@ -18,7 +18,7 @@ def get_hyper_params(**kwargs):
         "feature_map_shapes": [8, 8, 8, 16, 32, 64],
         "aspect_ratios": [[1.], [1.], [1.], [1.], [1.], [1.]],
         "detections_per_layer": [6, 2, 2, 2],
-        "iou_threshold": 0.4,
+        "iou_threshold": 0.5,
         "neg_pos_ratio": 3,
         "loc_loss_alpha": 1,
         "variances": [0.1, 0.1, 0.2, 0.2],
@@ -31,6 +31,9 @@ def get_hyper_params(**kwargs):
 
 def prepare_expected_output_fn(prior_boxes, hyper_params):
     def _prepare_output(image, boxes):
+        # Add batch dimension
+        boxes = tf.expand_dims(boxes, axis=0)
+
         deltas, labels = calculate_expected_outputs(prior_boxes, boxes, hyper_params)
         # We are preparing a single sample -> remove the batch axis.
         deltas = tf.squeeze(deltas, axis=0)
@@ -52,6 +55,9 @@ def calculate_expected_outputs(prior_boxes, gt_boxes, hyper_params):
         actual_deltas = (batch_size, total_bboxes, [delta_bbox_y, delta_bbox_x, delta_bbox_h, delta_bbox_w])
         actual_labels = (batch_size, total_bboxes, [1 or 0])
     """
+    tf.assert_rank(prior_boxes, 2)
+    tf.assert_rank(gt_boxes, 3)
+
     # In case of no ground truth boxes
     total_bboxes = tf.shape(prior_boxes)[0]
     batch_size = tf.shape(gt_boxes)[0]
@@ -63,16 +69,19 @@ def calculate_expected_outputs(prior_boxes, gt_boxes, hyper_params):
 
     iou_threshold = hyper_params["iou_threshold"]
     # variances = hyper_params["variances"]
-    gt_boxes = tf.expand_dims(gt_boxes, axis=0)
     # Calculate iou values between each bboxes and ground truth boxes
     iou_map = bbox_utils.generate_iou_map(bbox_utils.convert_xywh_to_bboxes(prior_boxes), gt_boxes)
     # Get max index value for each row
     max_indices_each_gt_box = tf.argmax(iou_map, axis=2, output_type=tf.int32)
     # IoU map has iou values for every gt boxes and we merge these values column wise
     merged_iou_map = tf.reduce_max(iou_map, axis=2)
-    #
+    # IoU above threshold
     pos_cond = tf.greater(merged_iou_map, iou_threshold)
-    #
+    # If no IoU is above threshold, then select the highest IoU
+    if tf.reduce_any(pos_cond) == tf.constant(False):
+        max_ious_indices = tf.argmax(merged_iou_map, axis=1)
+        pos_cond = tf.one_hot(max_ious_indices, depth=total_bboxes, dtype=tf.bool, on_value=True, off_value=False)
+
     gt_boxes_map = tf.gather(gt_boxes, max_indices_each_gt_box, batch_dims=1)
     expanded_gt_boxes = tf.where(tf.expand_dims(pos_cond, -1), gt_boxes_map, tf.zeros_like(gt_boxes_map))
     actual_deltas = bbox_utils.get_deltas_from_bboxes(prior_boxes, expanded_gt_boxes)

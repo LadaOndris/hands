@@ -59,7 +59,8 @@ def train(dataset_name: str, weights_path: str = None, debug=False, **kwargs):
     if dataset.num_test_batches == 0:
         dataset.test_dataset = None
         monitor_loss = 'loss'
-    dataset.num_train_batches = 400
+    dataset.num_train_batches = 1000
+    dataset.num_test_batches = 100
 
     log_dir = logs_utils.make_log_dir()
     checkpoint_path = logs_utils.compose_ckpt_path(log_dir)

@@ -3,6 +3,7 @@ import tensorflow as tf
 import src.detection.plots
 import src.utils.imaging
 import src.utils.plots as plots
+from src.detection.detector import BlazefaceDetector, YoloDetector
 from src.detection.yolov3 import utils
 from src.detection.yolov3.architecture.loader import YoloLoader
 from src.estimation.architecture.jgrp2o import JGR_J2O
@@ -11,7 +12,7 @@ from src.estimation.preprocessing import convert_coords_to_local, DatasetPreproc
 from src.utils.camera import Camera
 from src.utils.config import TEST_YOLO_CONF_THRESHOLD
 from src.utils.debugging import timing
-from src.utils.imaging import read_image_from_file, set_depth_unit, tf_resize_image
+from src.utils.imaging import read_image_from_file, tf_resize_image
 from src.utils.paths import LOGS_DIR
 
 
@@ -27,14 +28,15 @@ class HandPositionEstimator:
         self.plot_detection = plot_detection
         self.plot_estimation = plot_estimation
         self.plot_skeleton = plot_skeleton
-        self.resize_mode = 'crop'
-        self.detector = YoloLoader.load_from_weights(self.resize_mode, batch_size=1)
         self.network = JGR_J2O(n_features=196)
         self.estimator = self.load_estimator()
         self.estimation_preprocessor = DatasetPreprocessor(None, self.network.input_size, self.network.out_size,
                                                            camera=self.camera, config=config)
         self.estimation_fig_location = None
         self.resized_image = None
+        self.resize_mode = 'crop'
+        self.detector = BlazefaceDetector(num_detections=1)
+        # self.detector = YoloDetector(batch_size=1, resize_mode=self.resize_mode, num_detections=1)
 
         if self.plot_estimation or self.plot_detection:
             # Prepare the plot for live plotting
@@ -115,9 +117,9 @@ class HandPositionEstimator:
         image = tf.convert_to_tensor(image)
         tf.debugging.assert_rank(image, 3)
 
-        self.resized_image = self._resize_image_and_depth(image)
+        self.resized_image = self._resize_image(image)
         batch_images = tf.expand_dims(self.resized_image, axis=0)
-        boxes, nums = self._detect(batch_images)
+        boxes = self.detector.detect(batch_images)
 
         if self._detection_failed(boxes) == tf.constant(True):
             return None, None, None, None
@@ -148,10 +150,10 @@ class HandPositionEstimator:
             if tf.rank(depth_image) == 4:
                 depth_image = tf.squeeze(depth_image, axis=0)
             fig_location = self._string_format_or_none(fig_location_pattern, iter_index)
-            self.resized_image = self._resize_image_and_depth(depth_image)
+            self.resized_image = self._resize_image(depth_image)
             batch_images = tf.expand_dims(self.resized_image, axis=0)
-            boxes, nums = self._detect(batch_images, num_detections)
-            self._plot_detection(batch_images, boxes, nums, fig_location)
+            boxes = self.detector.detect(batch_images)
+            self._plot_detection(batch_images, boxes, fig_location)
             yield boxes
             iter_index += 1
             print(iter_index)
@@ -188,38 +190,10 @@ class HandPositionEstimator:
             return None
         return str(fig_location_pattern).format(index)
 
-    @timing
-    @tf.function
-    def _detect(self, images, num_detections=1):
-        """
-
-        Parameters
-        ----------
-        images
-        num_detections
-            The number of predicted boxes.
-        fig_location
-            Path including a file name for saving the figure.
-
-        Returns
-        -------
-        boxes : shape [batch_size, 4]
-            Returns all zeros if non-max suppression did not find any valid boxes.
-        """
-        detection_batch_images = preprocess_image_for_detection(images)
-        # Call predict on the detector
-        yolo_outputs = self.detector.tf_model(detection_batch_images)
-
-        boxes, scores, nums = utils.boxes_from_yolo_outputs(yolo_outputs, self.detector.batch_size,
-                                                            self.detector.input_shape,
-                                                            TEST_YOLO_CONF_THRESHOLD, iou_thresh=.7,
-                                                            max_boxes=num_detections)
-        return boxes, nums
-
-    def _plot_detection(self, images, boxes, nums, fig_location=None):
+    def _plot_detection(self, images, boxes, fig_location=None):
         if self.plot_detection:
             if fig_location is None:
-                src.detection.plots.plot_predictions_live(self.fig, self.ax, images[0], boxes[0], nums[0])
+                src.detection.plots.plot_predictions_live(self.fig, self.ax, images[0], boxes[0])
             else:
                 src.detection.plots.plot_predictions(images[0], boxes[0], fig_location)
 
@@ -259,35 +233,16 @@ class HandPositionEstimator:
         depth_image = read_image_from_file(file_path, dtype=tf.uint16, shape=self.camera.image_size)
         return depth_image
 
-    @timing
     @tf.function
-    def _resize_image_and_depth(self, image):
+    def _resize_image(self, image):
         """
         Resizes to size matching the detector's input shape.
         The unit of image pixels are set as milimeters.
         """
-        image = tf_resize_image(image, shape=self.detector.input_shape[:2],
+        image = tf_resize_image(image,
+                                shape=self.detector.input_shape[:2],
                                 resize_mode=self.resize_mode)
-        image = set_depth_unit(image, 0.001, self.camera.depth_unit)
         return image
 
     def _detection_failed(self, boxes):
         return tf.experimental.numpy.allclose(boxes, 0)
-
-
-def preprocess_image_for_detection(images):
-    """
-    Multiplies pixel values by 8 to match the units expected by the detector.
-    Converts image dtype to tf.uint8.
-
-    Parameters
-    ----------
-    images
-        Image pixel values are expected to be in milimeters.
-    """
-    dtype = images.dtype
-    images = tf.cast(images, dtype=tf.float32)
-    images *= 8.00085466544
-    images = tf.cast(images, dtype=dtype)
-    images = tf.image.convert_image_dtype(images, dtype=tf.uint8)
-    return images

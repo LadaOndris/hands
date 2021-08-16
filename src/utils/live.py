@@ -5,20 +5,33 @@ import pyrealsense2 as rs
 from src.utils.plots import _plot_depth_image_live
 
 
-def generate_live_images():
+def generate_live_images(max_depth=1000):
+    """
+    Establishes a new depth stream, producing depth frames of
+    (480, 640) resolution.
+    Depth value
+    Returns
+    -------
+
+    """
     pipe = rs.pipeline()
     cfg = rs.config()
     cfg.enable_stream(rs.stream.depth, 640, 480)
-    pipe.start(cfg)
+    profile = pipe.start(cfg)
+    depth_unit = get_depth_unit(profile)  # SR305 returns 0.00012498 (mm)
+    millimeter = 0.001
+    depth_unit_correction_factor = depth_unit / millimeter
     try:
         while True:
             frameset = pipe.wait_for_frames()
             depth_frame = frameset.get_depth_frame()
             depth_image = np.array(depth_frame.get_data())
-            depth_image = depth_image[..., np.newaxis] / 8.0
-
+            depth_image = depth_image[..., np.newaxis] * depth_unit_correction_factor
+            # Remove background further than max_depth mm.
+            depth_image[depth_image > max_depth] = 0
+            # Convert float64 back to uint16.
+            depth_image = depth_image.astype(np.uint16)
             yield depth_image
-
     finally:
         pipe.stop()
 
@@ -35,6 +48,12 @@ def print_live_images(num=None):
 
         depth_image = next(generator)
         _plot_depth_image_live(ax, depth_image)
+
+
+def get_depth_unit(profile):
+    depth_sensor = profile.get_device().first_depth_sensor()
+    depth_unit = depth_sensor.get_option(rs.option.depth_units)
+    return depth_unit
 
 
 def intrinsic_parameters():

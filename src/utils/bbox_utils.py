@@ -252,7 +252,7 @@ def weighted_suppression(scores, bboxes_and_landmarks, max_total_size=50, score_
                                                weighted_data])
     #
     weighted_data = weighted_data[1:]
-    pad_size = max_total_size - weighted_data.shape[0]
+    pad_size = max_total_size - tf.shape(weighted_data)[0]
     weighted_data = tf.pad(weighted_data, ((0, pad_size), (0, 0)))
     return weighted_data
 
