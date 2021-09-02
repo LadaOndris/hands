@@ -1,6 +1,7 @@
+import numpy as np
 import tensorflow as tf
 from tensorflow.keras import Model
-from tensorflow.keras.layers import Activation, Add, Conv2D, DepthwiseConv2D, MaxPool2D, UpSampling2D
+from tensorflow.keras.layers import Activation, Add, Concatenate, Conv2D, DepthwiseConv2D, MaxPool2D, UpSampling2D
 from tensorflow.python.keras import Input
 
 """
@@ -34,20 +35,20 @@ def double_blaze_block(inputs, filters, stride=1):
     return Activation("relu")(output)
 
 
-def concatenate_boxes(inputs, last_dimension):
+def concatenate_boxes(inputs, last_dimension, output_layer_name=None):
     batch_size = tf.shape(inputs[0])[0]
     outputs = []
     for conv_layer in inputs:
         outputs.append(tf.reshape(conv_layer, (batch_size, -1, last_dimension)))
     #
-    return tf.concat(outputs, axis=1)
+    return Concatenate(axis=1, name=output_layer_name)(outputs)
 
 
 def build_blaze_face(detections_per_layer, channels=1):
     # Each detection is defined by 4 values (bounding box)
-    values_per_layer = tf.convert_to_tensor(detections_per_layer) * 4
+    values_per_layer = np.array(detections_per_layer) * 4
 
-    input = Input(shape=(256, 256, channels))
+    input = Input(shape=(256, 256, channels), name='input')
     first_conv = Conv2D(24, (5, 5), strides=2, padding="same", activation="relu")(input)
     single_1 = single_blaze_block(first_conv, 24)
     single_2 = single_blaze_block(single_1, 24)
@@ -86,10 +87,11 @@ def build_blaze_face(detections_per_layer, channels=1):
     scale_64_boxes = Conv2D(values_per_layer[3], (3, 3), padding="same")(scale_64)
     scale_64_confs = Conv2D(detections_per_layer[3], (3, 3), padding="same")(scale_64)
 
-    boxes = concatenate_boxes([scale_8_boxes, scale_16_boxes, scale_32_boxes, scale_64_boxes], last_dimension=4)
+    boxes = concatenate_boxes([scale_8_boxes, scale_16_boxes, scale_32_boxes, scale_64_boxes], last_dimension=4,
+                              output_layer_name='deltas')
     confs = concatenate_boxes([scale_8_confs, scale_16_confs, scale_32_confs, scale_64_confs], last_dimension=1)
-    confs = Activation('sigmoid')(confs)
-    return Model(inputs=input, outputs=[boxes, confs])
+    confs = Activation('sigmoid', name='confs')(confs)
+    return Model(inputs=input, outputs=[boxes, confs], )
 
 
 if __name__ == "__main__":

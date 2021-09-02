@@ -4,13 +4,10 @@ import src.detection.plots
 import src.utils.imaging
 import src.utils.plots as plots
 from src.detection.detector import BlazefaceDetector, YoloDetector
-from src.detection.yolov3 import utils
-from src.detection.yolov3.architecture.loader import YoloLoader
 from src.estimation.architecture.jgrp2o import JGR_J2O
 from src.estimation.configuration import Config
 from src.estimation.preprocessing import convert_coords_to_local, DatasetPreprocessor
 from src.utils.camera import Camera
-from src.utils.config import TEST_YOLO_CONF_THRESHOLD
 from src.utils.debugging import timing
 from src.utils.imaging import read_image_from_file, tf_resize_image
 from src.utils.paths import LOGS_DIR
@@ -23,7 +20,8 @@ class HandPositionEstimator:
     either from files, live2 images, or from given images.
     """
 
-    def __init__(self, camera: Camera, config: Config, plot_detection=False, plot_estimation=False, plot_skeleton=True):
+    def __init__(self, camera: Camera, config: Config, detector: str = 'yolo',
+                 plot_detection=False, plot_estimation=False, plot_skeleton=True):
         self.camera = camera
         self.plot_detection = plot_detection
         self.plot_estimation = plot_estimation
@@ -35,8 +33,12 @@ class HandPositionEstimator:
         self.estimation_fig_location = None
         self.resized_image = None
         self.resize_mode = 'crop'
-        self.detector = BlazefaceDetector(num_detections=1)
-        # self.detector = YoloDetector(batch_size=1, resize_mode=self.resize_mode, num_detections=1)
+        if detector == 'blazeface':
+            self.detector = BlazefaceDetector(num_detections=1)
+        elif detector == 'yolo':
+            self.detector = YoloDetector(batch_size=1, resize_mode=self.resize_mode, num_detections=1)
+        else:
+            raise ValueError(F"Invalid detector: {detector}")
 
         if self.plot_estimation or self.plot_detection:
             # Prepare the plot for live plotting
