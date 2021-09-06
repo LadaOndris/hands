@@ -3,7 +3,7 @@ import time
 
 import numpy as np
 
-import src.estimation.configuration as configs
+import estimation.jgrp2o.configuration as configs
 from src.system.hand_position_estimator import HandPositionEstimator
 from src.utils.camera import Camera
 from src.utils.live import generate_live_images

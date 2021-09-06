@@ -3,8 +3,8 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_addons as tfa
 
-from src.estimation.configuration import Config
-from src.estimation.preprocessing_com import ComPreprocessor
+from estimation.jgrp2o.configuration import Config
+from estimation.jgrp2o.preprocessing_com import ComPreprocessor
 from src.utils.camera import Camera
 from src.utils.debugging import timing
 from src.utils.imaging import resize_bilinear_nearest_batch, resize_images

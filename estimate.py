@@ -1,6 +1,6 @@
 import argparse
 
-import src.estimation.configuration as configs
+import estimation.jgrp2o.configuration as configs
 from src.datasets.generators import get_source_generator
 from src.system.hand_position_estimator import HandPositionEstimator
 from src.utils.camera import Camera

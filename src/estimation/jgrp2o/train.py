@@ -1,13 +1,13 @@
 import tensorflow as tf
 
-import src.estimation.configuration as configs
+import estimation.jgrp2o.configuration as configs
 import src.utils.logs as logs_utils
 from src.datasets.bighand.dataset import BighandDataset
 from src.datasets.msra.dataset import MSRADataset
-from src.estimation.architecture.jgrp2o import JGR_J2O
-from src.estimation.architecture.losses import CoordinateLoss, OffsetLoss
-from src.estimation.configuration import Config
-from src.estimation.preprocessing import DatasetPreprocessor
+from estimation.jgrp2o.architecture.jgrp2o import JGR_J2O
+from estimation.jgrp2o.architecture.losses import CoordinateLoss, OffsetLoss
+from estimation.jgrp2o.configuration import Config
+from estimation.jgrp2o.preprocessing import DatasetPreprocessor
 from src.utils.camera import Camera
 from src.utils.paths import BIGHAND_DATASET_DIR, MSRAHANDGESTURE_DATASET_DIR
 

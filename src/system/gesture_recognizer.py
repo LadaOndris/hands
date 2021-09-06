@@ -3,7 +3,7 @@ import typing
 import numpy as np
 import tensorflow as tf
 
-import src.estimation.configuration as configs
+import estimation.jgrp2o.configuration as configs
 import src.utils.plots as plots
 from src.acceptance.base import hand_orientation, joint_relation_errors, vectors_angle
 from src.acceptance.gesture_acceptance_result import GestureAcceptanceResult
