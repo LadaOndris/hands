@@ -8,6 +8,7 @@ from estimation.jgrp2o.preprocessing_com import ComPreprocessor
 from src.utils.camera import Camera
 from src.utils.debugging import timing
 from src.utils.imaging import resize_bilinear_nearest_batch, resize_images
+from utils.imaging import normalize_image_depth
 
 
 def rotate(images, uv_joints, image_center):
@@ -52,11 +53,10 @@ def square_bboxes(bboxes, image_size):
     return tf.stack([u_min, v_min, u_max, v_max], axis=-1)
 
 
-def extract_bboxes(uv_global):
+def extract_bboxes(uv_coords):
     """
     Parameters
     ----------
-    images      tf.Tensor of shape [None, height, width]
     uv_global   tf.Tensor of shape [None, n_joints, 2]
 
     Returns
@@ -64,9 +64,11 @@ def extract_bboxes(uv_global):
         tf.Tensor of shape [None, 4].
         The four values are [left, top, right, bottom].
     """
+    tf.assert_rank(uv_coords, 3)
+
     # Extract u and v coordinates
-    u = uv_global[..., 0]
-    v = uv_global[..., 1]
+    u = uv_coords[..., 0]
+    v = uv_coords[..., 1]
 
     # Find min and max over joints axis.
     u_min, u_max = tf.reduce_min(u, axis=1), tf.reduce_max(u, axis=1)
@@ -193,15 +195,6 @@ def get_resize_coeffs(bboxes, target_size):
 def resize_coords(coords_uv, resize_coeffs):
     resized_uv = resize_coeffs[:, tf.newaxis, :] * coords_uv
     return resized_uv
-
-
-def normalize_imgs(images, bcubes):
-    z_cube_size = (bcubes[..., tf.newaxis, 5:6] - bcubes[..., tf.newaxis, 2:3])
-    normalized_imgs = (images - bcubes[..., tf.newaxis, tf.newaxis, 2:3])
-    # Ignore negative values - because it was the background of zeroes.
-    normalized_imgs = (tf.math.abs(normalized_imgs) + normalized_imgs) / 2
-    normalized_imgs = normalized_imgs / z_cube_size[..., tf.newaxis]
-    return normalized_imgs
 
 
 def normalize_coords(joints_uv, joints_z, bcubes, image_size):
@@ -345,7 +338,10 @@ class DatasetPreprocessor:
         resized_imgs = resize_images(cropped_imgs, target_size=self.image_in_size)
         resized_imgs = tf.where(resized_imgs < bcubes[..., tf.newaxis, tf.newaxis, 2:3], 0., resized_imgs)
         resize_coeffs = get_resize_coeffs(bboxes, target_size=self.image_in_size)
-        normalized_imgs = normalize_imgs(resized_imgs, bcubes)
+
+        z_start = bcubes[..., tf.newaxis, tf.newaxis, 2:3]
+        z_end = bcubes[..., tf.newaxis, tf.newaxis, 5:6]
+        normalized_imgs = normalize_image_depth(resized_imgs, z_start, z_end)
         return normalized_imgs, cropped_imgs, bboxes, bcubes, resize_coeffs
 
     def __next__(self):
@@ -362,8 +358,8 @@ class DatasetPreprocessor:
         Both, images and coordinates are normalized to range [0, 1].
         Also, offsets are computed from the normalized coordinates.
         """
-        images, self.xyz_global = self.iterator.get_next()
-        uv_global = self.camera.world_to_pixel(self.xyz_global)[..., :2]
+        images, xyz_global = self.iterator.get_next()
+        uv_global = self.camera.world_to_pixel(xyz_global)[..., :2]
 
         # Rotate in plane
         if self.augment:
@@ -395,8 +391,10 @@ class DatasetPreprocessor:
         resize_coeffs = get_resize_coeffs(bboxes, target_size=self.image_in_size)
         resized_uv = resize_coords(uv_cropped, resize_coeffs)
 
-        z = self.xyz_global[..., 2:3]
-        normalized_imgs = normalize_imgs(resized_imgs, bcubes)
+        z = xyz_global[..., 2:3]
+        z_start = bcubes[..., tf.newaxis, tf.newaxis, 2:3]
+        z_end = bcubes[..., tf.newaxis, tf.newaxis, 5:6]
+        normalized_imgs = normalize_image_depth(resized_imgs, z_start, z_end)
         normalized_uvz = normalize_coords(resized_uv, z, bcubes, self.image_in_size)
         offsets = compute_offsets(normalized_imgs, normalized_uvz)
         return normalized_imgs, [normalized_uvz, offsets]

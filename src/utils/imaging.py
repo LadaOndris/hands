@@ -61,6 +61,20 @@ def tf_resize_image(depth_image, shape, resize_mode: str):
 
 
 def resize_bilinear_nearest(image_in, shape):
+    """
+    A customized implementation of resizing that combines bilinear and
+    nearest resizing methods. Pixels neighboring zeros use nearest resizing while
+    the rest uses the bilinear method.
+
+    Parameters
+    ----------
+    image_in
+    shape
+
+    Returns
+    -------
+
+    """
     img_shape = tf.shape(image_in)
     img_height = img_shape[0]
     img_width = img_shape[1]
@@ -390,3 +404,50 @@ if __name__ == "__main__":
     im = tf.zeros([5, 194, 195, 1])
     res = resize_bilinear_nearest_batch(im, [96, 96])
     tf.print(res.shape)
+
+
+def normalize_image_depth(images, min_value, max_value):
+    """
+    Crops the image values to [min_value, max_value] range
+    and normalizes to [-1, 1] range.
+
+    Parameters
+    ----------
+    images      A batch of images to normalize.
+    min_value   A scalar value or a tensor broadcastable to images.
+    max_value   A scalar value or a tensor braodcastable to images.
+
+    Returns
+    -------
+    normalized_images
+    """
+    images_clipped_depth = tf.clip_by_value(images, min_value, max_value)
+    length = max_value - min_value
+    normalized_images_to_zero_one = images_clipped_depth / length
+    normalized_images_to_minus_one_one = normalized_images_to_zero_one * \
+                                         tf.constant(2, images.dtype) - tf.constant(1, images.dtype)
+    return normalized_images_to_minus_one_one
+
+
+def normalize_to_range(tensor, range):
+    """
+    Normalizes the tensor to the given range.
+
+    Parameters
+    ----------
+    tensor      A tensor to normalize.
+    range       Expected range of values.
+
+    Returns
+    -------
+    normalized_tensor
+    """
+
+    tensor_min = tf.reduce_min(tensor)
+    tensor_max = tf.reduce_max(tensor)
+
+    tensor_zero_one = (tensor - tensor_min) / (tensor_max - tensor_min)
+
+    range_width = range[1] - range[0]
+    tensor_normalized = tensor_zero_one * range_width + range[0]
+    return tensor_normalized

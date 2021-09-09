@@ -293,3 +293,57 @@ class ComPreprocessor:
         cropped = tf.map_fn(tf.autograph.experimental.do_not_convert(crop), elems=[images, bboxes],
                             fn_output_signature=tf.RaggedTensorSpec(shape=[None, None, 1], dtype=images.dtype))
         return cropped
+
+def crop_to_bounding_box(image, bounding_box):
+    x_start = bounding_box[0]
+    y_start = bounding_box[1]
+    x_end = bounding_box[2]
+    y_end = bounding_box[3]
+
+    # Modify bcube because it is invalid to index with negatives.
+    x_start_bound = tf.maximum(x_start, 0)
+    y_start_bound = tf.maximum(y_start, 0)
+    x_end_bound = tf.minimum(image.shape[1], x_end)
+    y_end_bound = tf.minimum(image.shape[0], y_end)
+    cropped_image = image[y_start_bound:y_end_bound, x_start_bound:x_end_bound]
+
+    # Pad the cropped image if we were out of bounds
+    padded_image = tf.pad(cropped_image, [[y_start_bound - y_start, y_end - y_end_bound],
+                                          [x_start_bound - x_start, x_end - x_end_bound]])
+    return padded_image
+
+def crop_to_bcube(image, bcube):
+    """
+    Crops the z-axis to range [bcube_z_min, bcube_z_max].
+    Parameters
+    ----------
+    image
+    bcube
+
+    Returns
+    -------
+
+    """
+    x_start = bcube[0]
+    y_start = bcube[1]
+    z_start = bcube[2]
+    x_end = bcube[3]
+    y_end = bcube[4]
+    z_end = bcube[5]
+
+    # Modify bcube because it is invalid to index with negatives.
+    x_start_bound = tf.maximum(x_start, 0)
+    y_start_bound = tf.maximum(y_start, 0)
+    x_end_bound = tf.minimum(image.shape[1], x_end)
+    y_end_bound = tf.minimum(image.shape[0], y_end)
+    cropped_image = image[y_start_bound:y_end_bound, x_start_bound:x_end_bound]
+    z_start = tf.cast(z_start, tf.float32)
+    z_end = tf.cast(z_end, tf.float32)
+    cropped_image = tf.where(cropped_image < z_start, z_start, cropped_image)
+    cropped_image = tf.where(cropped_image > z_end, z_end, cropped_image)
+
+    # Pad the cropped image if we were out of bounds
+    padded_image = tf.pad(cropped_image, [[y_start_bound - y_start, y_end - y_end_bound],
+                                          [x_start_bound - x_start, x_end - x_end_bound],
+                                          [z_start, z_end]])
+    return padded_image
