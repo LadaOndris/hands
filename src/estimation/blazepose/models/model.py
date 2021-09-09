@@ -122,12 +122,12 @@ class BlazePose():
         self.conv16 = tf.keras.models.Sequential([
             tf.keras.layers.Conv2D(
                 filters=5 * self.num_keypoints, kernel_size=2, activation=None),
-            tf.keras.layers.Reshape((5 * self.num_keypoints, 1), name="regression_final_dense")
+            tf.keras.layers.Reshape((self.num_keypoints, 5), name="regression_final_dense")
         ], name="joints")
 
     def build_model(self, model_type):
 
-        input_x = tf.keras.layers.Input(shape=(256, 256, 3))
+        input_x = tf.keras.layers.Input(shape=(256, 256, 1))
 
         # Block 1
         # In: 1x256x256x3
@@ -156,10 +156,10 @@ class BlazePose():
         # In: 1, 32, 32, 96
         x = self.conv9a(x) + self.conv9b(y1)
         # In: 1, 64, 64, 48
-        y = self.conv10a(x) + self.conv10b(y0)
-        y = self.conv11(y)
+        # y = self.conv10a(x) + self.conv10b(y0)
+        y = self.conv11(x)
 
-        # In: 1, 128, 128, 8
+        # In: 1, 64, 64, n_points
         heatmap = tf.keras.layers.Activation("sigmoid", name="heatmap")(y)
 
         # === Regression ===

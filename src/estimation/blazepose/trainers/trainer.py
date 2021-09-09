@@ -6,7 +6,7 @@ import tensorflow as tf
 from tensorflow.keras.callbacks import ModelCheckpoint, TensorBoard, EarlyStopping, TerminateOnNaN
 from tensorflow.keras.optimizers import Adam
 
-from src.estimation.blazepose.models import ModelCreator
+from src.estimation.blazepose.models.ModelCreator import ModelCreator
 from src.estimation.blazepose.trainers.losses import euclidean_distance_loss, focal_loss, focal_tversky, get_huber_loss, \
     get_wing_loss
 from src.estimation.blazepose.trainers.TrainPhase import TrainPhase
@@ -87,7 +87,7 @@ def train(config):
 
 
 def freeze_regression_layers(model):
-    print("Freezing these layers:")
+    print("Freezing regression layers:")
     for layer in model.layers:
         if layer.name.startswith("regression"):
             print(layer.name)
@@ -95,7 +95,7 @@ def freeze_regression_layers(model):
 
 
 def freeze_heatmap_layers(model):
-    print("Freezing these layers:")
+    print("Freezing heatmap layers:")
     for layer in model.layers:
         if not layer.name.startswith("regression"):
             print(layer.name)

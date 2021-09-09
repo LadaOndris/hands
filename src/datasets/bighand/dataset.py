@@ -2,6 +2,7 @@ import os
 
 import tensorflow as tf
 
+from src.datasets.bighand.dataset_base import BighandDatasetBase
 from src.utils import plots
 from src.utils.camera import Camera
 from src.utils.paths import BIGHAND_DATASET_DIR
@@ -9,10 +10,13 @@ from src.utils.paths import BIGHAND_DATASET_DIR
 
 class BighandDataset(BighandDatasetBase):
 
-    def __init__(self, dataset_path, test_subject=None, batch_size=16, shuffle=True):
+    def __init__(self, dataset_path, test_subject=None, batch_size=16, shuffle=True,
+                 prepare_output_fn=None, prepare_output_fn_shape=None):
         super().__init__(dataset_path, 'full_annotation', test_subject, batch_size)
         self.shuffle = shuffle
         self.batch_index = 0
+        self.prepare_output_fn = prepare_output_fn
+        self.prepare_output_fn_shape = prepare_output_fn_shape
 
         self.train_dataset = self._build_dataset(self.train_annotation_files, self.train_annotations)
         self.test_dataset = self._build_dataset(self.test_annotation_files, self.test_annotations)
@@ -53,6 +57,10 @@ class BighandDataset(BighandDatasetBase):
             dataset = dataset.shuffle(buffer_size=annotations_count, reshuffle_each_iteration=True)
         dataset = dataset.repeat()
         dataset = dataset.map(self._prepare_sample)
+
+        if self.prepare_output_fn is not None:
+            dataset = dataset.map(self.prepare_output_fn)
+
         dataset = dataset.batch(self.batch_size)
         dataset = dataset.prefetch(buffer_size=1)
         return dataset
@@ -81,10 +89,12 @@ class BighandDataset(BighandDatasetBase):
         depth_image = tf.io.decode_image(depth_image, channels=1, dtype=tf.uint16)
         depth_image.set_shape([480, 640, 1])
 
+        """ Reorder joints """
         reorder_idx = tf.constant([
             0, 1, 6, 7, 8, 2, 9, 10, 11, 3, 12, 13, 14, 4, 15, 16, 17, 5, 18, 19, 20
         ], dtype=tf.int32)
         joints = tf.gather(joints, reorder_idx)
+
         return depth_image, joints
 
 

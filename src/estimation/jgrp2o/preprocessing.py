@@ -370,41 +370,41 @@ class DatasetPreprocessor:
             images, uv_global = augment_batch(images, uv_global)
         images = tf.cast(images, tf.float32)
 
-        self.bboxes.assign(extract_bboxes(uv_global))
-        self.bboxes.assign(square_bboxes(self.bboxes, tf.shape(images)[1:3]))
-        self.bcubes.assign(self.com_preprocessor.refine_bcube_using_com(images, self.bboxes,
-                                                                        cube_size=self.cube_size))
+        bboxes = extract_bboxes(uv_global)
+        bboxes = square_bboxes(bboxes, tf.shape(images)[1:3])
+        bcubes = self.com_preprocessor.refine_bcube_using_com(images, bboxes,
+                                                                        cube_size=self.cube_size)
         if self.augment:
             # Translate 3D - move bcubes
-            self.bcubes.assign(bcubes_translate3d(self.bcubes, stddev=8))
+            bcubes = bcubes_translate3d(bcubes, stddev=8)
             # Scale 3D - increase or descrease the size of bcubes
-            self.bcubes.assign(bcubes_scale3d(self.bcubes, stddev=0.08, cube_size=self.cube_size))
+            bcubes = bcubes_scale3d(bcubes, stddev=0.08, cube_size=self.cube_size)
 
         # Crop the area defined by bcube from the orig image
-        self.cropped_imgs.assign(self.com_preprocessor.crop_bcube(images, self.bcubes))
+        cropped_imgs = self.com_preprocessor.crop_bcube(images, bcubes)
         if self.thresholding:
-            self.cropped_imgs.assign(self.com_preprocessor.apply_otsus_thresholding(self.cropped_imgs))
-        self.bcubes.assign(tf.cast(self.bcubes, tf.float32))
-        self.bboxes.assign(tf.concat([self.bcubes[..., :2], self.bcubes[..., 3:5]], axis=-1))
+            cropped_imgs = self.com_preprocessor.apply_otsus_thresholding(cropped_imgs)
+        bcubes = tf.cast(bcubes, tf.float32)
+        bboxes = tf.concat([bcubes[..., :2], bcubes[..., 3:5]], axis=-1)
 
         # Resize images and remove values out of bcubes caused by billinear resizing
-        resized_imgs = resize_images(self.cropped_imgs, target_size=self.image_in_size)
-        resized_imgs = tf.where(resized_imgs < self.bcubes[..., tf.newaxis, tf.newaxis, 2:3], 0, resized_imgs)
+        resized_imgs = resize_images(cropped_imgs, target_size=self.image_in_size)
+        resized_imgs = tf.where(resized_imgs < bcubes[..., tf.newaxis, tf.newaxis, 2:3], 0, resized_imgs)
 
-        uv_cropped = uv_global - tf.cast(self.bboxes[:, tf.newaxis, :2], dtype=tf.float32)
-        self.resize_coeffs.assign(get_resize_coeffs(self.bboxes, target_size=self.image_in_size))
-        resized_uv = resize_coords(uv_cropped, self.resize_coeffs)
+        uv_cropped = uv_global - tf.cast(bboxes[:, tf.newaxis, :2], dtype=tf.float32)
+        resize_coeffs = get_resize_coeffs(bboxes, target_size=self.image_in_size)
+        resized_uv = resize_coords(uv_cropped, resize_coeffs)
 
         z = self.xyz_global[..., 2:3]
-        self.normalized_imgs = normalize_imgs(resized_imgs, self.bcubes)
-        normalized_uvz = normalize_coords(resized_uv, z, self.bcubes, self.image_in_size)
-        offsets = compute_offsets(self.normalized_imgs, normalized_uvz)
-        return self.normalized_imgs, [normalized_uvz, offsets]
+        normalized_imgs = normalize_imgs(resized_imgs, bcubes)
+        normalized_uvz = normalize_coords(resized_uv, z, bcubes, self.image_in_size)
+        offsets = compute_offsets(normalized_imgs, normalized_uvz)
+        return normalized_imgs, [normalized_uvz, offsets]
 
-    def convert_coords_to_local(self, uvz_coords):
-        uv_local = uvz_coords[..., :2] - self.bboxes[..., tf.newaxis, :2]
+    def convert_coords_to_local(self, uvz_coords, bboxes):
+        uv_local = uvz_coords[..., :2] - bboxes[..., tf.newaxis, :2]
         return uv_local
 
-    def convert_coords_to_global(self, local_uvz_coords):
-        uv_global = local_uvz_coords[..., :2] + self.bboxes[..., tf.newaxis, :2]
+    def convert_coords_to_global(self, local_uvz_coords, bboxes):
+        uv_global = local_uvz_coords[..., :2] + bboxes[..., tf.newaxis, :2]
         return uv_global
