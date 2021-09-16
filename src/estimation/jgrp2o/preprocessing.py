@@ -8,7 +8,7 @@ from estimation.jgrp2o.preprocessing_com import ComPreprocessor
 from src.utils.camera import Camera
 from src.utils.debugging import timing
 from src.utils.imaging import resize_bilinear_nearest_batch, resize_images
-from utils.imaging import normalize_image_depth
+from src.utils.imaging import normalize_image_depth
 
 
 def rotate(images, uv_joints, image_center):
