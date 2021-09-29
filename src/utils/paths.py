@@ -18,6 +18,7 @@ USECASE_DATASET_DIR = _ROOT_PATH.joinpath("datasets/usecase")
 SIMPLE_DATASET_DIR = _ROOT_PATH.joinpath("datasets/simple_boxes")
 MHP_DATASET_DIR = _ROOT_PATH.joinpath("datasets/mhp")
 TVHAND_DATASET_DIR = _ROOT_PATH.joinpath("datasets/tvhand")
+NYU_DATASET_DIR = _ROOT_PATH.joinpath("datasets/dataset")
 
 USECASE_DATASET_JOINTS_PATH = USECASE_DATASET_DIR.joinpath('joints.txt')
 YOLO_CONFIG_FILE = SRC_DIR.joinpath("detection/yolov3/architecture/yolov3-tiny.cfg")
