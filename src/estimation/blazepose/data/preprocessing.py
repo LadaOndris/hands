@@ -2,11 +2,13 @@ import numpy as np
 import tensorflow as tf
 import tensorflow_addons as tfa
 
-from src.estimation.jgrp2o.preprocessing import extract_bboxes
+from src.estimation.blazepose.data.rotate import rotate_tensor, rotation_angle_from_21_keypoints
+from src.estimation.jgrp2o.preprocessing import extract_bboxes, get_resize_coeffs, resize_coords
 from src.estimation.jgrp2o.preprocessing_com import ComPreprocessor, crop_to_bounding_box
 from src.utils.camera import Camera
 from src.utils.imaging import normalize_to_range, resize_bilinear_nearest
-
+from src.datasets.bighand.dataset import BighandDataset, BIGHAND_DATASET_DIR
+from src.utils.plots import plot_image_with_skeleton, plot_depth_image
 
 def preprocess(image, joints, camera: Camera, heatmap_sigma: int, cube_size=200):
     """
@@ -36,27 +38,42 @@ def preprocess(image, joints, camera: Camera, heatmap_sigma: int, cube_size=200)
     tf.assert_rank(image, 3)
     tf.assert_rank(joints, 2)
 
-    com_preprocessor = ComPreprocessor(camera)
+    com_preprocessor = ComPreprocessor(camera, thresholding=False)
 
     uv_global = camera.world_to_pixel(joints)[..., :2]
     image = tf.cast(image, tf.float32)
 
-    rotation_angle = determine_rotation_angle(uv_global)
+    rotation_angle = rotation_angle_from_21_keypoints(uv_global)
     image_rotated = tfa.image.transform_ops.rotate(image, rotation_angle)
-    uv_global_rotated = rotate_joints(uv_global)
+    image_center = [tf.shape(image)[1] / 2, tf.shape(image)[0] / 2]
+    uv_global_rotated = rotate_tensor(uv_global, rotation_angle, center=image_center)
 
-    bbox_raw = extract_bboxes(uv_global_rotated)
+    bbox_raw = extract_bboxes(uv_global_rotated[tf.newaxis, ...])[0]
     cropped_image = crop_to_bounding_box(image_rotated, bbox_raw)
-    coms = com_preprocessor.compute_coms(cropped_image, offsets=bbox_raw[..., :2])
-    bcube = com_preprocessor.com_to_bcube(coms, size=cube_size)
-    cropped_image = crop_to_bounding_box(image_rotated, cube_to_box(bcube))
+    coms = com_preprocessor.compute_coms(cropped_image[tf.newaxis, ...], offsets=bbox_raw[tf.newaxis, ..., :2])
+    bcube = com_preprocessor.com_to_bcube(coms, size=[cube_size, cube_size, cube_size])
+    bbox = cube_to_box(bcube)
+    cropped_image = crop_to_bounding_box(image_rotated, bbox)
+    # The joints can still overflow the bounding box even after the crop
+    cropped_joints_uv = uv_global - tf.cast(bbox[tf.newaxis, :2], dtype=tf.float32)
 
+    # Resize image
     resized_image = resize_bilinear_nearest(cropped_image, [256, 256])
-    normalized_image = normalize_to_range(resized_image, range=[-1, 1])
+    # Resize coordinates
+    resize_coeffs = get_resize_coeffs(bbox, target_size=[256, 256])
+    resized_joints_uv = resize_coords(cropped_joints_uv, resize_coeffs)
 
-    heatmaps = generate_heatmaps(uv_global, orig_size=tf.shape(image)[:2], target_size=[64, 64])
+    min_value = tf.reduce_min(resized_image)
+    max_value = tf.reduce_max(resized_image)
+    normalized_image = normalize_to_range(resized_image, [-1, 1], min_value, max_value)
+    joints_z = joints[..., 2:3]
+    normalized_z = normalize_to_range(joints_z, [-1, 1], min_value, max_value)
+    normalized_uv = normalize_to_range(resized_joints_uv, [0, 1], 0, 255)
+    normalized_joints_uvz = tf.concat([normalized_uv, normalized_z], axis=-1)
 
-    return normalized_image, joints, heatmaps
+    heatmaps = generate_heatmaps(uv_global, orig_size=tf.shape(image)[:2], target_size=[64, 64], sigma=heatmap_sigma)
+
+    return normalized_image, normalized_joints_uvz, heatmaps
 
 
 def cube_to_box(cube):
@@ -71,7 +88,7 @@ def cube_to_box(cube):
     -------
     box     A box defined as [x_start, y_start, x_end, y_end]
     """
-    return tf.concat([cube[..., 0:2], cube[..., 3:5]])
+    return tf.concat([cube[..., 0:2], cube[..., 3:5]], axis=-1)
 
 
 @tf.function
@@ -156,3 +173,35 @@ def draw_gaussian_point(image, point, sigma):
     updated_middle = tf.concat([left, center, right], axis=1)
     image = tf.concat([top, updated_middle, bottom], axis=0)
     return image
+
+
+def try_dataset_preprocessing():
+    from src.datasets.bighand.dataset import BighandDataset, BIGHAND_DATASET_DIR
+    from src.utils.plots import plot_image_with_skeleton
+
+    prepare_fn = lambda image, joints: preprocess(image, joints, Camera('bighand'), heatmap_sigma=4, cube_size=180)
+    prepare_fn_shape = (tf.TensorShape([256, 256, 1]), tf.TensorShape([21, 3]), tf.TensorShape([64, 64, 21]))
+    ds = BighandDataset(BIGHAND_DATASET_DIR, batch_size=1, shuffle=False,
+                        prepare_output_fn=prepare_fn, prepare_output_fn_shape=prepare_fn_shape)
+    train_iterator = iter(ds.train_dataset)
+
+    for image, joints, heatmap in train_iterator:
+        plot_image_with_skeleton(image, joints[:, :2])
+        break
+
+
+def try_preprocessing():
+    from src.datasets.bighand.dataset import BighandDataset, BIGHAND_DATASET_DIR
+    from src.utils.plots import plot_image_with_skeleton
+
+    ds = BighandDataset(BIGHAND_DATASET_DIR, batch_size=1, shuffle=True)
+    train_iterator = iter(ds.train_dataset)
+
+    for image, joints in train_iterator:
+        image, joints, heatmaps = preprocess(image[0], joints[0], Camera('bighand'), heatmap_sigma=4, cube_size=180)
+        plot_image_with_skeleton(image, joints[:, :2])
+        break
+
+
+if __name__ == "__main__":
+    try_preprocessing()

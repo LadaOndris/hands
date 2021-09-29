@@ -62,12 +62,16 @@ class ComPreprocessor:
         ----------
         images : tf.RaggedTensor of shape [batch_size, None, None, 1]
             A batch of images.
+        offsets : A Tensor of shape [batch_size, 2]
 
         Returns
         -------
         center_of_mass : tf.Tensor of shape [batch_size, 3]
             Represented in UVZ coordinates.
         """
+        tf.assert_rank(images, 4)
+        tf.assert_rank(offsets, 2)
+
         if self.thresholding:
             images = self.apply_otsus_thresholding(images)
 
@@ -294,6 +298,7 @@ class ComPreprocessor:
                             fn_output_signature=tf.RaggedTensorSpec(shape=[None, None, 1], dtype=images.dtype))
         return cropped
 
+
 def crop_to_bounding_box(image, bounding_box):
     x_start = bounding_box[0]
     y_start = bounding_box[1]
@@ -309,8 +314,10 @@ def crop_to_bounding_box(image, bounding_box):
 
     # Pad the cropped image if we were out of bounds
     padded_image = tf.pad(cropped_image, [[y_start_bound - y_start, y_end - y_end_bound],
-                                          [x_start_bound - x_start, x_end - x_end_bound]])
+                                          [x_start_bound - x_start, x_end - x_end_bound],
+                                          [0, 0]])
     return padded_image
+
 
 def crop_to_bcube(image, bcube):
     """

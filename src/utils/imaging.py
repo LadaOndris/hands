@@ -429,9 +429,18 @@ def normalize_image_depth(images, min_value, max_value):
     return normalized_images_to_minus_one_one
 
 
-def normalize_to_range(tensor, range):
+def normalize_to_range(tensor, range, min_value=None, max_value=None):
     """
     Normalizes the tensor to the given range.
+    The lower bound of the range is mapped to the minimal value of the given tensor.
+    The uppoer bound of the range is mapped to the maximal value of the given tensor.
+
+    For example:
+    range = [0, 1]
+    tensor = [4, 6, 8]
+    normalized_tensor = [0, 0.5, 1]
+    4 -> 0
+    8 -> 1
 
     Parameters
     ----------
@@ -443,10 +452,12 @@ def normalize_to_range(tensor, range):
     normalized_tensor
     """
 
-    tensor_min = tf.reduce_min(tensor)
-    tensor_max = tf.reduce_max(tensor)
+    if min_value is None:
+        min_value = tf.reduce_min(tensor)
+    if max_value is None:
+        max_value = tf.reduce_max(tensor)
 
-    tensor_zero_one = (tensor - tensor_min) / (tensor_max - tensor_min)
+    tensor_zero_one = (tensor - min_value) / (max_value - min_value)
 
     range_width = range[1] - range[0]
     tensor_normalized = tensor_zero_one * range_width + range[0]
