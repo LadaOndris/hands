@@ -26,4 +26,5 @@ datasets/cvpr15_MSRAHandGestureDB/*
 datasets/custom
 datasets/custom_demo/*
 datasets/*.tar
+datasets/nyu
 

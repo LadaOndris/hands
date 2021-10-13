@@ -19,5 +19,6 @@ def plot_sample_images(samples: int) -> None:
         plot_depth_image(depth_im)
 
 
+
 if __name__ == "__main__":
     plot_sample_images(samples=10)

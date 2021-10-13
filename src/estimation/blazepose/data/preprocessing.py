@@ -8,7 +8,7 @@ from src.utils.camera import Camera
 from src.utils.imaging import normalize_to_range, resize_bilinear_nearest
 
 
-def preprocess(image, joints, camera: Camera, heatmap_sigma: int, cube_size=200,
+def preprocess(image, joints, camera: Camera, heatmap_sigma: int, joints_type, cube_size=200,
                image_target_size=256, output_target_size=64):
     """
     Prepares data for BlazePose training.
@@ -26,6 +26,7 @@ def preprocess(image, joints, camera: Camera, heatmap_sigma: int, cube_size=200,
     image A depth image of shape [256, 256, 1]
     joints  Joint coordinates of shape [n_joints, 3] in XYZ mode.
     camera  A camera instance with specific parameters that captured the given image.
+    joints_type Either 'xyz' or 'uvz'.
 
     Returns
     -------
@@ -37,8 +38,14 @@ def preprocess(image, joints, camera: Camera, heatmap_sigma: int, cube_size=200,
     tf.assert_rank(image, 3)
     tf.assert_rank(joints, 2)
 
-    uv_global = camera.world_to_pixel(joints)[..., :2]
+    if joints_type == 'xyz':
+        uv_global = camera.world_to_pixel(joints)[..., :2]
+    else:
+        uv_global = joints[..., :2]
     image = tf.cast(image, tf.float32)
+
+    if joints_are_out_of_bounds(image, uv_global):
+        return None, None, None
 
     cropped_image, cropped_uv, bbox = crop_image_and_joints(image, uv_global, camera, cube_size)
     rotated_image, rotated_uv = rotate_image_and_joints(cropped_image, cropped_uv)
@@ -51,6 +58,15 @@ def preprocess(image, joints, camera: Camera, heatmap_sigma: int, cube_size=200,
                                  sigma=heatmap_sigma)
 
     return normalized_image, normalized_uvz, heatmaps
+
+
+def joints_are_out_of_bounds(image, uv_coords):
+    height, width = tf.shape(image)[0], tf.shape(image)[1]
+    u = uv_coords[..., 0]
+    v = uv_coords[..., 1]
+    mask = (u < 0) | (v < 0) | (u > tf.cast(width, tf.float32)) | (v > tf.cast(height, tf.float32))
+    num_invalid = tf.math.count_nonzero(mask)
+    return tf.cast(num_invalid, tf.float64) >= tf.shape(uv_coords)[0] / 2
 
 
 def crop_image_and_joints(image, uv_coords, camera, cube_size):
@@ -206,6 +222,9 @@ def try_dataset_preprocessing():
     train_iterator = iter(ds.train_dataset)
 
     for image, joints, heatmap in train_iterator:
+        if joints is None:
+            print("Skipping out of bounds joints.")
+            continue
         plot_image_with_skeleton(image, joints[:, :2])
         break
 
@@ -219,6 +238,9 @@ def try_preprocessing():
 
     for image, joints in train_iterator:
         image, joints, heatmaps = preprocess(image[0], joints[0], Camera('bighand'), heatmap_sigma=4, cube_size=180)
+        if joints is None:
+            print("Skipping out of bounds joints.")
+            continue
         plot_image_with_skeleton(image, joints[:, :2])
         break
 

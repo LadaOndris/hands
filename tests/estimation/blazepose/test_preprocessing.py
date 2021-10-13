@@ -44,6 +44,9 @@ class Test(tf.test.TestCase):
             plot_image_with_skeleton(image_raw, cam.world_to_pixel(joints_raw))
             image, joints, heatmaps = preprocess(image_raw, joints_raw, cam, heatmap_sigma=4, cube_size=180,
                                                  image_target_size=256)
+            if joints is None:
+                print("Skipping because of out of bounds joints.")
+                continue
             plot_image_with_skeleton(image, joints * 256)
             rotation_angle = rotation_angle_from_21_keypoints(joints)
             self.assertAllClose(rotation_angle, 0)
