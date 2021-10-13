@@ -1,5 +1,5 @@
-import numpy as np
 import tensorflow as tf
+
 from src.utils.debugging import timing
 
 
@@ -90,7 +90,10 @@ class Camera:
         tf.Tensor
             UVZ coordinates
         """
-        if tf.rank(coords_xyz) == 2:
+
+        if tf.rank(coords_xyz) == 1:
+            points_xyz = coords_xyz[tf.newaxis, tf.newaxis, ...]
+        elif tf.rank(coords_xyz) == 2:
             points_xyz = coords_xyz[tf.newaxis, ...]
         else:
             points_xyz = coords_xyz
@@ -108,13 +111,17 @@ class Camera:
         uv = projected_points[..., :2] / projected_points[..., 2:3]
         uvz = tf.concat([uv, projected_points[..., 2:3]], axis=-1)
 
+        if tf.rank(coords_xyz) == 1:
+            uvz = tf.squeeze(uvz, axis=[0, 1])
         if tf.rank(coords_xyz) == 2:
             uvz = tf.squeeze(uvz, axis=0)
         return uvz
 
     @timing
     def pixel_to_world(self, coords_uvz):
-        if tf.rank(coords_uvz) == 2:
+        if tf.rank(coords_uvz) == 1:
+            points_uvz = coords_uvz[tf.newaxis, tf.newaxis, ...]
+        elif tf.rank(coords_uvz) == 2:
             points_uvz = coords_uvz[tf.newaxis, ...]
         else:
             points_uvz = coords_uvz
@@ -129,6 +136,8 @@ class Camera:
         tranposed_xyz = tf.matmul(self.invr_projection_matrix, multiplied_uvz1, transpose_b=True)
         xyz = tf.transpose(tranposed_xyz, [0, 2, 1])[..., :3]
 
-        if tf.rank(coords_uvz) == 2:
+        if tf.rank(coords_uvz) == 1:
+            xyz = tf.squeeze(xyz, axis=[0, 1])
+        elif tf.rank(coords_uvz) == 2:
             xyz = tf.squeeze(xyz, axis=0)
         return xyz

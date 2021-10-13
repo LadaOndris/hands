@@ -3,6 +3,16 @@ import tensorflow as tf
 
 
 def rotation_angle_from_21_keypoints(keypoints):
+    """
+
+    Parameters
+    ----------
+    keypoints
+
+    Returns
+    -------
+
+    """
     tf.assert_equal(tf.shape(keypoints)[0], 21)
 
     keypoints = keypoints[:, :2]  # Forget the Z axis
@@ -18,9 +28,9 @@ def rotation_angle_from_21_keypoints(keypoints):
 
     angle = vectors_angle(hand_direction, base_direction)
 
-    if hand_direction[1] < 0:
-        return 2 * np.math.pi - angle
-    return angle
+    if hand_direction[0] < 0:
+        return angle
+    return -angle
 
 
 def unit_vector(vector):

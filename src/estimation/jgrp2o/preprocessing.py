@@ -193,7 +193,7 @@ def get_resize_coeffs(bboxes, target_size):
 
 
 def resize_coords(coords_uv, resize_coeffs):
-    resized_uv = resize_coeffs[:, tf.newaxis, :] * coords_uv
+    resized_uv = resize_coeffs[..., tf.newaxis, :] * coords_uv
     return resized_uv
 
 

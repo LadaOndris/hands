@@ -4,13 +4,15 @@ import tensorflow_addons as tfa
 
 from src.estimation.blazepose.data.rotate import rotate_tensor, rotation_angle_from_21_keypoints
 from src.estimation.jgrp2o.preprocessing import extract_bboxes, get_resize_coeffs, resize_coords
-from src.estimation.jgrp2o.preprocessing_com import ComPreprocessor, crop_to_bounding_box
+from src.estimation.jgrp2o.preprocessing_com import ComPreprocessor, crop_to_bcube, crop_to_bounding_box
 from src.utils.camera import Camera
 from src.utils.imaging import normalize_to_range, resize_bilinear_nearest
 from src.datasets.bighand.dataset import BighandDataset, BIGHAND_DATASET_DIR
 from src.utils.plots import plot_image_with_skeleton, plot_depth_image
 
-def preprocess(image, joints, camera: Camera, heatmap_sigma: int, cube_size=200):
+
+def preprocess(image, joints, camera: Camera, heatmap_sigma: int, cube_size=200,
+               image_target_size=256, output_target_size=64):
     """
     Prepares data for BlazePose training.
 
@@ -50,17 +52,17 @@ def preprocess(image, joints, camera: Camera, heatmap_sigma: int, cube_size=200)
 
     bbox_raw = extract_bboxes(uv_global_rotated[tf.newaxis, ...])[0]
     cropped_image = crop_to_bounding_box(image_rotated, bbox_raw)
-    coms = com_preprocessor.compute_coms(cropped_image[tf.newaxis, ...], offsets=bbox_raw[tf.newaxis, ..., :2])
-    bcube = com_preprocessor.com_to_bcube(coms, size=[cube_size, cube_size, cube_size])
+    com = com_preprocessor.compute_coms(cropped_image[tf.newaxis, ...], offsets=bbox_raw[tf.newaxis, ..., :2])[0]
+    bcube = com_preprocessor.com_to_bcube(com, size=[cube_size, cube_size, cube_size])
     bbox = cube_to_box(bcube)
-    cropped_image = crop_to_bounding_box(image_rotated, bbox)
+    cropped_image = crop_to_bcube(image_rotated, bcube)
     # The joints can still overflow the bounding box even after the crop
-    cropped_joints_uv = uv_global - tf.cast(bbox[tf.newaxis, :2], dtype=tf.float32)
+    cropped_joints_uv = uv_global_rotated - tf.cast(bbox[tf.newaxis, :2], dtype=tf.float32)
 
     # Resize image
-    resized_image = resize_bilinear_nearest(cropped_image, [256, 256])
+    resized_image = resize_bilinear_nearest(cropped_image, [image_target_size, image_target_size])
     # Resize coordinates
-    resize_coeffs = get_resize_coeffs(bbox, target_size=[256, 256])
+    resize_coeffs = get_resize_coeffs(bbox, target_size=[image_target_size, image_target_size])
     resized_joints_uv = resize_coords(cropped_joints_uv, resize_coeffs)
 
     min_value = tf.reduce_min(resized_image)
@@ -71,7 +73,10 @@ def preprocess(image, joints, camera: Camera, heatmap_sigma: int, cube_size=200)
     normalized_uv = normalize_to_range(resized_joints_uv, [0, 1], 0, 255)
     normalized_joints_uvz = tf.concat([normalized_uv, normalized_z], axis=-1)
 
-    heatmaps = generate_heatmaps(uv_global, orig_size=tf.shape(image)[:2], target_size=[64, 64], sigma=heatmap_sigma)
+    heatmaps = generate_heatmaps(resized_joints_uv,
+                                 orig_size=tf.shape(resized_image)[:2],
+                                 target_size=[output_target_size, output_target_size],
+                                 sigma=heatmap_sigma)
 
     return normalized_image, normalized_joints_uvz, heatmaps
 
@@ -106,16 +111,18 @@ def generate_heatmaps(keypoints, orig_size, target_size, sigma):
 
     """
 
-    heatmap_size = np.array([target_size[0], target_size[1], 1])
-    image_size = np.array([orig_size[0], orig_size[1], 1])
+    heatmap_size = tf.convert_to_tensor([target_size[0], target_size[1], 1], dtype=tf.int32)
+    image_size = tf.convert_to_tensor([orig_size[0], orig_size[1], 1], dtype=tf.float32)
+    scale = tf.cast(heatmap_size[tf.newaxis, :2], tf.float32) / image_size[tf.newaxis, :2]
 
-    keypoints = keypoints * heatmap_size[np.newaxis, :2] / image_size[np.newaxis, :2]
-    heatmaps = []
-    for keypoint in keypoints:
+    keypoints = keypoints * scale
+    num_keypoints = tf.shape(keypoints)[0]
+    heatmaps = tf.TensorArray(dtype=tf.float32, size=num_keypoints)
+    for i in range(num_keypoints):
         heatmap = tf.zeros(heatmap_size)
-        heatmap = draw_gaussian_point(heatmap, keypoint, sigma=sigma)
-        heatmaps.append(heatmap)
-    return tf.concat(heatmaps, axis=-1)
+        heatmap = draw_gaussian_point(heatmap, keypoints[i], sigma=sigma)
+        heatmaps = heatmaps.write(i, heatmap)
+    return heatmaps.stack()
 
 
 @tf.function

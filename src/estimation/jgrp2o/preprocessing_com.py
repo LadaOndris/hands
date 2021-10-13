@@ -350,7 +350,8 @@ def crop_to_bcube(image, bcube):
     cropped_image = tf.where(cropped_image > z_end, z_end, cropped_image)
 
     # Pad the cropped image if we were out of bounds
+    # Set the minimum distance to z_start (not 0!).
     padded_image = tf.pad(cropped_image, [[y_start_bound - y_start, y_end - y_end_bound],
                                           [x_start_bound - x_start, x_end - x_end_bound],
-                                          [z_start, z_end]])
+                                          [0, 0]], constant_values=z_start)
     return padded_image
