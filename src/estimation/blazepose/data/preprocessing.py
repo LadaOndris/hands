@@ -1,4 +1,3 @@
-import numpy as np
 import tensorflow as tf
 import tensorflow_addons as tfa
 
@@ -7,8 +6,6 @@ from src.estimation.jgrp2o.preprocessing import extract_bboxes, get_resize_coeff
 from src.estimation.jgrp2o.preprocessing_com import ComPreprocessor, crop_to_bcube, crop_to_bounding_box
 from src.utils.camera import Camera
 from src.utils.imaging import normalize_to_range, resize_bilinear_nearest
-from src.datasets.bighand.dataset import BighandDataset, BIGHAND_DATASET_DIR
-from src.utils.plots import plot_image_with_skeleton, plot_depth_image
 
 
 def preprocess(image, joints, camera: Camera, heatmap_sigma: int, cube_size=200,
@@ -40,45 +37,61 @@ def preprocess(image, joints, camera: Camera, heatmap_sigma: int, cube_size=200,
     tf.assert_rank(image, 3)
     tf.assert_rank(joints, 2)
 
-    com_preprocessor = ComPreprocessor(camera, thresholding=False)
-
     uv_global = camera.world_to_pixel(joints)[..., :2]
     image = tf.cast(image, tf.float32)
 
-    rotation_angle = rotation_angle_from_21_keypoints(uv_global)
-    image_rotated = tfa.image.transform_ops.rotate(image, rotation_angle)
-    image_center = [tf.shape(image)[1] / 2, tf.shape(image)[0] / 2]
-    uv_global_rotated = rotate_tensor(uv_global, rotation_angle, center=image_center)
+    cropped_image, cropped_uv, bbox = crop_image_and_joints(image, uv_global, camera, cube_size)
+    rotated_image, rotated_uv = rotate_image_and_joints(cropped_image, cropped_uv)
+    resized_image, resized_uv = resize_image_and_joints(rotated_image, rotated_uv, image_target_size, bbox)
+    normalized_image, normalized_uvz = normalize_image_and_joints(resized_image, resized_uv, joints[..., 2:3])
 
-    bbox_raw = extract_bboxes(uv_global_rotated[tf.newaxis, ...])[0]
-    cropped_image = crop_to_bounding_box(image_rotated, bbox_raw)
-    com = com_preprocessor.compute_coms(cropped_image[tf.newaxis, ...], offsets=bbox_raw[tf.newaxis, ..., :2])[0]
-    bcube = com_preprocessor.com_to_bcube(com, size=[cube_size, cube_size, cube_size])
-    bbox = cube_to_box(bcube)
-    cropped_image = crop_to_bcube(image_rotated, bcube)
-    # The joints can still overflow the bounding box even after the crop
-    cropped_joints_uv = uv_global_rotated - tf.cast(bbox[tf.newaxis, :2], dtype=tf.float32)
-
-    # Resize image
-    resized_image = resize_bilinear_nearest(cropped_image, [image_target_size, image_target_size])
-    # Resize coordinates
-    resize_coeffs = get_resize_coeffs(bbox, target_size=[image_target_size, image_target_size])
-    resized_joints_uv = resize_coords(cropped_joints_uv, resize_coeffs)
-
-    min_value = tf.reduce_min(resized_image)
-    max_value = tf.reduce_max(resized_image)
-    normalized_image = normalize_to_range(resized_image, [-1, 1], min_value, max_value)
-    joints_z = joints[..., 2:3]
-    normalized_z = normalize_to_range(joints_z, [-1, 1], min_value, max_value)
-    normalized_uv = normalize_to_range(resized_joints_uv, [0, 1], 0, 255)
-    normalized_joints_uvz = tf.concat([normalized_uv, normalized_z], axis=-1)
-
-    heatmaps = generate_heatmaps(resized_joints_uv,
+    heatmaps = generate_heatmaps(resized_uv,
                                  orig_size=tf.shape(resized_image)[:2],
                                  target_size=[output_target_size, output_target_size],
                                  sigma=heatmap_sigma)
 
-    return normalized_image, normalized_joints_uvz, heatmaps
+    return normalized_image, normalized_uvz, heatmaps
+
+
+def crop_image_and_joints(image, uv_coords, camera, cube_size):
+    com_preprocessor = ComPreprocessor(camera, thresholding=False)
+    bbox_raw = extract_bboxes(uv_coords[tf.newaxis, ...])[0]
+    cropped_image = crop_to_bounding_box(image, bbox_raw)
+    com = com_preprocessor.compute_coms(cropped_image[tf.newaxis, ...], offsets=bbox_raw[tf.newaxis, ..., :2])[0]
+    bcube = com_preprocessor.com_to_bcube(com, size=[cube_size, cube_size, cube_size])
+    bbox = cube_to_box(bcube)
+    cropped_image = crop_to_bcube(image, bcube)
+    # The joints can still overflow the bounding box even after the crop
+    cropped_joints_uv = uv_coords - tf.cast(bbox[tf.newaxis, :2], dtype=tf.float32)
+    return cropped_image, cropped_joints_uv, bbox
+
+
+def rotate_image_and_joints(image, uv_coords):
+    min_value = tf.reduce_min(image)
+    rotation_angle = rotation_angle_from_21_keypoints(uv_coords)
+    image_rotated = tfa.image.transform_ops.rotate(image, rotation_angle, fill_value=min_value)
+    image_center = [tf.shape(image)[1] / 2, tf.shape(image)[0] / 2]
+    uv_rotated = rotate_tensor(uv_coords, rotation_angle, center=image_center)
+    return image_rotated, uv_rotated
+
+
+def resize_image_and_joints(image, uv_coords, image_target_size, bbox):
+    # Resize image
+    resized_image = resize_bilinear_nearest(image, [image_target_size, image_target_size])
+    # Resize coordinates
+    resize_coeffs = get_resize_coeffs(bbox, target_size=[image_target_size, image_target_size])
+    resized_joints_uv = resize_coords(uv_coords, resize_coeffs)
+    return resized_image, resized_joints_uv
+
+
+def normalize_image_and_joints(image, uv_coords, z_coords):
+    min_value = tf.reduce_min(image)
+    max_value = tf.reduce_max(image)
+    normalized_image = normalize_to_range(image, [-1, 1], min_value, max_value)
+    normalized_z = normalize_to_range(z_coords, [-1, 1], min_value, max_value)
+    normalized_uv = normalize_to_range(uv_coords, [0, 1], 0, 255)
+    normalized_joints_uvz = tf.concat([normalized_uv, normalized_z], axis=-1)
+    return normalized_image, normalized_joints_uvz
 
 
 def cube_to_box(cube):
