@@ -90,13 +90,44 @@ class Camera:
         tf.Tensor
             UVZ coordinates
         """
-
         if tf.rank(coords_xyz) == 1:
             points_xyz = coords_xyz[tf.newaxis, tf.newaxis, ...]
         elif tf.rank(coords_xyz) == 2:
             points_xyz = coords_xyz[tf.newaxis, ...]
         else:
             points_xyz = coords_xyz
+
+        uvz = self.world_to_pixel_3d(points_xyz)
+
+        if tf.rank(coords_xyz) == 1:
+            uvz = tf.squeeze(uvz, axis=[0, 1])
+        if tf.rank(coords_xyz) == 2:
+            uvz = tf.squeeze(uvz, axis=0)
+        return uvz
+
+    def world_to_pixel_1d(self, coords_xyz):
+        """
+        Projects the given points through pinhole camera on a plane at a distance of focal_length.
+        Returns
+        -------
+        tf.Tensor
+            UVZ coordinates
+        """
+        tf.assert_rank(coords_xyz, 1)
+        points_xyz = coords_xyz[tf.newaxis, tf.newaxis, ...]
+        uvz = self.world_to_pixel_3d(points_xyz)
+        uvz = tf.squeeze(uvz, axis=[0, 1])
+        return uvz
+
+    def world_to_pixel_2d(self, coords_xyz):
+        tf.assert_rank(coords_xyz, 2)
+        points_xyz = coords_xyz[tf.newaxis, ...]
+        uvz = self.world_to_pixel_3d(points_xyz)
+        uvz = tf.squeeze(uvz, axis=0)
+        return uvz
+
+    def world_to_pixel_3d(self, points_xyz):
+        tf.assert_rank(points_xyz, 3)
         points_xyz = tf.cast(points_xyz, tf.float32)
 
         # Add ones for all points
@@ -110,14 +141,8 @@ class Camera:
         # Devide by Z
         uv = projected_points[..., :2] / projected_points[..., 2:3]
         uvz = tf.concat([uv, projected_points[..., 2:3]], axis=-1)
-
-        if tf.rank(coords_xyz) == 1:
-            uvz = tf.squeeze(uvz, axis=[0, 1])
-        if tf.rank(coords_xyz) == 2:
-            uvz = tf.squeeze(uvz, axis=0)
         return uvz
 
-    @timing
     def pixel_to_world(self, coords_uvz):
         if tf.rank(coords_uvz) == 1:
             points_uvz = coords_uvz[tf.newaxis, tf.newaxis, ...]
@@ -125,19 +150,37 @@ class Camera:
             points_uvz = coords_uvz[tf.newaxis, ...]
         else:
             points_uvz = coords_uvz
-        points_uvz = tf.cast(points_uvz, tf.float32)
 
+        xyz = self.pixel_to_world_3d(points_uvz)
+
+        if tf.rank(coords_uvz) == 1:
+            xyz = tf.squeeze(xyz, axis=[0, 1])
+        elif tf.rank(coords_uvz) == 2:
+            xyz = tf.squeeze(xyz, axis=0)
+        return xyz
+
+    def pixel_to_world_1d(self, coords_uvz):
+        tf.assert_rank(coords_uvz, 1)
+        points_uvz = coords_uvz[tf.newaxis, tf.newaxis, ...]
+        xyz = self.pixel_to_world_3d(points_uvz)
+        xyz = tf.squeeze(xyz, axis=[0, 1])
+        return xyz
+
+    def pixel_to_world_2d(self, coords_uvz):
+        tf.assert_rank(coords_uvz, 2)
+        points_uvz = coords_uvz[tf.newaxis, ...]
+        xyz = self.pixel_to_world_3d(points_uvz)
+        xyz = tf.squeeze(xyz, axis=0)
+        return xyz
+
+    def pixel_to_world_3d(self, coords_uvz):
+        tf.assert_rank(coords_uvz, 3)
+        points_uvz = tf.cast(coords_uvz, tf.float32)
         multiplied_uv = points_uvz[..., 0:2] * points_uvz[..., 2:3]
-
         points_shape = tf.shape(points_uvz)[:2]
         new_shape = tf.concat([points_shape, [1]], axis=-1)
         ones = tf.ones(new_shape, dtype=points_uvz.dtype)
         multiplied_uvz1 = tf.concat([multiplied_uv, points_uvz[..., 2:3], ones], axis=-1)
         tranposed_xyz = tf.matmul(self.invr_projection_matrix, multiplied_uvz1, transpose_b=True)
         xyz = tf.transpose(tranposed_xyz, [0, 2, 1])[..., :3]
-
-        if tf.rank(coords_uvz) == 1:
-            xyz = tf.squeeze(xyz, axis=[0, 1])
-        elif tf.rank(coords_uvz) == 2:
-            xyz = tf.squeeze(xyz, axis=0)
         return xyz
