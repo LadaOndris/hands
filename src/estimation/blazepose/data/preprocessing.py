@@ -39,14 +39,13 @@ def preprocess(image, joints, camera: Camera, heatmap_sigma: int, joints_type, c
     tf.assert_rank(joints, 2)
 
     if joints_type == 'xyz':
-        uv_global = camera.world_to_pixel(joints)[..., :2]
+        uv_global = camera.world_to_pixel_2d(joints)[..., :2]
     else:
         uv_global = joints[..., :2]
     image = tf.cast(image, tf.float32)
 
-    if joints_are_out_of_bounds(image, uv_global):
-        return None, None, None
-
+    # if joints_are_out_of_bounds(image, uv_global):
+    #     return None, None, None
     cropped_image, cropped_uv, bbox = crop_image_and_joints(image, uv_global, camera, cube_size)
     rotated_image, rotated_uv = rotate_image_and_joints(cropped_image, cropped_uv)
     resized_image, resized_uv = resize_image_and_joints(rotated_image, rotated_uv, image_target_size, bbox)
@@ -57,7 +56,7 @@ def preprocess(image, joints, camera: Camera, heatmap_sigma: int, joints_type, c
                                  target_size=[output_target_size, output_target_size],
                                  sigma=heatmap_sigma)
 
-    return normalized_image, normalized_uvz, heatmaps
+    return normalized_image, (normalized_uvz, heatmaps)
 
 
 def joints_are_out_of_bounds(image, uv_coords):
@@ -125,7 +124,6 @@ def cube_to_box(cube):
     return tf.concat([cube[..., 0:2], cube[..., 3:5]], axis=-1)
 
 
-@tf.function
 def generate_heatmaps(keypoints, orig_size, target_size, sigma):
     """
 
@@ -146,13 +144,15 @@ def generate_heatmaps(keypoints, orig_size, target_size, sigma):
 
     keypoints = keypoints * scale
     num_keypoints = tf.shape(keypoints)[0]
-    heatmaps = tf.TensorArray(dtype=tf.float32, size=num_keypoints)
+    heatmaps_array = tf.TensorArray(dtype=tf.float32, size=num_keypoints)
     for i in range(num_keypoints):
         heatmap = tf.zeros(heatmap_size)
         heatmap = draw_gaussian_point(heatmap, keypoints[i], sigma=sigma)
-        heatmaps = heatmaps.write(i, heatmap)
-    return heatmaps.stack()
-
+        heatmap = tf.squeeze(heatmap, axis=-1)
+        heatmaps_array = heatmaps_array.write(i, heatmap)
+    heatmaps_stacked = heatmaps_array.stack()
+    heatmaps = tf.transpose(heatmaps_stacked, [1, 2, 0])
+    return heatmaps
 
 @tf.function
 def draw_gaussian_point(image, point, sigma):
@@ -215,7 +215,8 @@ def try_dataset_preprocessing():
     from src.datasets.bighand.dataset import BighandDataset, BIGHAND_DATASET_DIR
     from src.utils.plots import plot_image_with_skeleton
 
-    prepare_fn = lambda image, joints: preprocess(image, joints, Camera('bighand'), heatmap_sigma=4, cube_size=180)
+    prepare_fn = lambda image, joints: preprocess(image, joints, Camera('bighand'),  joints_type='xyz',
+                                                  heatmap_sigma=4, cube_size=180)
     prepare_fn_shape = (tf.TensorShape([256, 256, 1]), tf.TensorShape([21, 3]), tf.TensorShape([64, 64, 21]))
     ds = BighandDataset(BIGHAND_DATASET_DIR, batch_size=1, shuffle=False,
                         prepare_output_fn=prepare_fn, prepare_output_fn_shape=prepare_fn_shape)
@@ -237,7 +238,8 @@ def try_preprocessing():
     train_iterator = iter(ds.train_dataset)
 
     for image, joints in train_iterator:
-        image, joints, heatmaps = preprocess(image[0], joints[0], Camera('bighand'), heatmap_sigma=4, cube_size=180)
+        image, joints, heatmaps = preprocess(image[0], joints[0], Camera('bighand'), joints_type='xyz',
+                                             heatmap_sigma=4, cube_size=180)
         if joints is None:
             print("Skipping out of bounds joints.")
             continue
