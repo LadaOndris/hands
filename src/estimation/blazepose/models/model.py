@@ -4,10 +4,12 @@ from tensorflow.keras.models import Model
 from estimation.blazepose.models.layers import BlazeBlock
 
 
-class BlazePose():
-    def __init__(self, num_keypoints: int):
+class BlazePose:
+
+    def __init__(self, num_keypoints: int, num_keypoint_features: int):
 
         self.num_keypoints = num_keypoints
+        self.num_keypoint_features = num_keypoint_features
 
         self.conv1 = tf.keras.layers.Conv2D(
             filters=24, kernel_size=3, strides=(2, 2), padding='same', activation='relu'
@@ -121,8 +123,8 @@ class BlazePose():
         # 5 = UVZ coordinates + hand presence + handedness
         self.conv16 = tf.keras.models.Sequential([
             tf.keras.layers.Conv2D(
-                filters=5 * self.num_keypoints, kernel_size=2, activation=None),
-            tf.keras.layers.Reshape((self.num_keypoints, 5), name="regression_final_dense")
+                filters=self.num_keypoint_features * self.num_keypoints, kernel_size=2, activation=None),
+            tf.keras.layers.Reshape((self.num_keypoints, self.num_keypoint_features), name="regression_final_dense")
         ], name="joints")
 
     def build_model(self, model_type):
