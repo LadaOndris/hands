@@ -182,7 +182,9 @@ class ComPreprocessor:
             Z coordinate cannot be zero, otherwise projection fails.
         size : Size of the bounding cube
         """
-        com_xyz = self.camera.pixel_to_world(com)
+        tf.assert_rank(com, 1)
+
+        com_xyz = self.camera.pixel_to_world_1d(com)
         half_size = tf.constant(size, dtype=tf.float32) / 2
         # Do not subtract Z coordinate yet
         # The Z coordinates must stay the same for both points
@@ -190,8 +192,8 @@ class ComPreprocessor:
         half_size_xy = tf.stack([half_size[0], half_size[1], 0], axis=0)
         bcube_start_xyz = com_xyz - half_size_xy
         bcube_end_xyz = com_xyz + half_size_xy
-        bcube_start_uv = self.camera.world_to_pixel(bcube_start_xyz)[..., :2]
-        bcube_end_uv = self.camera.world_to_pixel(bcube_end_xyz)[..., :2]
+        bcube_start_uv = self.camera.world_to_pixel_1d(bcube_start_xyz)[..., :2]
+        bcube_end_uv = self.camera.world_to_pixel_1d(bcube_end_xyz)[..., :2]
         # Bounding Z coordinates are computed independendly of XY
         bcube_start_z = com[..., 2:3] - half_size[2]
         bcube_end_z = com[..., 2:3] + half_size[2]

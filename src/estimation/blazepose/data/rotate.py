@@ -1,4 +1,3 @@
-import numpy as np
 import tensorflow as tf
 
 
@@ -14,6 +13,7 @@ def rotation_angle_from_21_keypoints(keypoints):
 
     """
     tf.assert_equal(tf.shape(keypoints)[0], 21)
+    tf.assert_rank(keypoints, 2)
 
     keypoints = keypoints[:, :2]  # Forget the Z axis
     # 0 - palm
@@ -26,7 +26,7 @@ def rotation_angle_from_21_keypoints(keypoints):
     hand_direction = keypoints[0] - keypoints[9]
     base_direction = tf.constant([0, 1], hand_direction.dtype)
 
-    angle = vectors_angle(hand_direction, base_direction)
+    angle = vectors_angle_1d(hand_direction, base_direction)
 
     if hand_direction[0] < 0:
         return angle
@@ -39,6 +39,7 @@ def unit_vector(vector):
     return vector / tf.norm(vector, axis=-1)[..., tf.newaxis]
 
 
+@tf.function
 def vectors_angle(v1, v2):
     """
     Returns the angle between two vectors.
@@ -49,11 +50,25 @@ def vectors_angle(v1, v2):
     v1 = unit_vector(v1)
     v2 = unit_vector(v2)
 
-    if tf.rank(v2) > 1:
-        product = tf.matmul(v1, v2, transpose_b=True)
-    else:
-        product = tf.reduce_sum(tf.multiply(v1, v2))
-    return tf.math.acos(tf.clip_by_value(product, -1.0, 1.0))
+    product = tf.matmul(v1, v2, transpose_b=True)
+    angle = tf.math.acos(tf.clip_by_value(product, -1.0, 1.0))
+    print(angle)
+
+
+@tf.function
+def vectors_angle_1d(v1, v2):
+    tf.assert_rank(v1, 1)
+    tf.assert_rank(v2, 1)
+
+    v1 = tf.convert_to_tensor(v1)
+    v2 = tf.convert_to_tensor(v2)
+
+    v1 = unit_vector(v1)
+    v2 = unit_vector(v2)
+
+    product = tf.reduce_sum(tf.multiply(v1, v2))
+    angle = tf.math.acos(tf.clip_by_value(product, -1.0, 1.0))
+    return angle
 
 
 def rotate_tensor(tensor, angle, center=tf.constant([0, 0])):
