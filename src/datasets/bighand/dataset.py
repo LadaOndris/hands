@@ -4,7 +4,7 @@ import tensorflow as tf
 
 from src.datasets.bighand.dataset_base import BighandDatasetBase
 from src.utils import plots
-from src.utils.camera import Camera
+from src.utils.camera import Camera, CameraBighand
 from src.utils.paths import BIGHAND_DATASET_DIR
 
 
@@ -17,6 +17,7 @@ class BighandDataset(BighandDatasetBase):
         self.batch_index = 0
         self.prepare_output_fn = prepare_output_fn
         self.prepare_output_fn_shape = prepare_output_fn_shape
+        self.camera = CameraBighand()
 
         self.train_dataset = self._build_dataset(self.train_annotation_files, self.train_annotations)
         self.test_dataset = self._build_dataset(self.test_annotation_files, self.test_annotations)
@@ -59,11 +60,23 @@ class BighandDataset(BighandDatasetBase):
         dataset = dataset.map(self._prepare_sample)
 
         if self.prepare_output_fn is not None:
+            dataset = dataset.filter(self._joints_are_in_bounds)
             dataset = dataset.map(self.prepare_output_fn)
 
         dataset = dataset.batch(self.batch_size)
         dataset = dataset.prefetch(buffer_size=1)
         return dataset
+
+    def _joints_are_in_bounds(self, image, kp_xyz):
+        image_shape = tf.cast(tf.shape(image), kp_xyz.dtype)
+        height, width = image_shape[0], image_shape[1]
+        kp_uvz = self.camera.world_to_pixel_2d(kp_xyz)
+        u = kp_uvz[..., 0]
+        v = kp_uvz[..., 1]
+        mask = (u < 0) | (v < 0) | (u > width) | (v > height)
+        num_invalid = tf.math.count_nonzero(mask)
+        are_in_bounds = tf.cast(num_invalid, tf.float64) < tf.shape(kp_uvz)[0] / 3
+        return are_in_bounds
 
     def _prepare_sample(self, annotation_line):
         """ Each line contains 64 values: file_name, 21 (joints) x 3 (coords) """
@@ -99,7 +112,7 @@ class BighandDataset(BighandDatasetBase):
 
 
 if __name__ == '__main__':
-    cam = Camera('bighand')
+    cam = CameraBighand()
     ds = BighandDataset(BIGHAND_DATASET_DIR, batch_size=10, shuffle=True)
     iterator = iter(ds.train_dataset)
     batch_images, batch_labels = next(iterator)

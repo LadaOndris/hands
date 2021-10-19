@@ -454,8 +454,12 @@ def normalize_to_range(tensor, range, min_value=None, max_value=None):
 
     if min_value is None:
         min_value = tf.reduce_min(tensor)
+    else:
+        min_value = tf.cast(min_value, dtype=tensor.dtype)
     if max_value is None:
         max_value = tf.reduce_max(tensor)
+    else:
+        max_value = tf.cast(max_value, dtype=tensor.dtype)
 
     tensor_zero_one = (tensor - min_value) / (max_value - min_value)
 

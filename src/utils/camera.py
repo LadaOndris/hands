@@ -185,29 +185,33 @@ class CameraBighand(Camera):
                          principal_point=(315.944855, 245.287079),
                          image_size=(640, 480),
                          depth_unit=0.001,
-                         extrinsic_matrix=
-                         np.array([[0.999988496304, -0.00468848412856, 0.000982563360594, 0],
-                                   [0.00469115935266, 0.999985218048, -0.00273845880292, 0],
-                                   [-0.000969709653873, 0.00274303671904, 0.99999576807, 0],
-                                   [0, 0, 0, 1]]))
+                         )
         # self.focal_length = [476.0068, 476.0068]  # [588.235, 587.084]
+        # extrinsic_matrix =
+        # np.array([[0.999988496304, -0.00468848412856, 0.000982563360594, 0],
+        #           [0.00469115935266, 0.999985218048, -0.00273845880292, 0],
+        #           [-0.000969709653873, 0.00274303671904, 0.99999576807, 0],
+        #           [0, 0, 0, 1]])
 
 
 class CameraSR305(Camera):
-    super().__init__(focal_length=(476.0068, 476.0068),
-                     principal_point=(313.6830139, 242.7547302),
-                     image_size=(640, 480),
-                     depth_unit=0.000125)
+    def __init__(self):
+        super().__init__(focal_length=(476.0068, 476.0068),
+                         principal_point=(313.6830139, 242.7547302),
+                         image_size=(640, 480),
+                         depth_unit=0.000125)
 
 
 class CameraD105(Camera):
-    super().__init__(focal_length=(592.138, 592.138),
-                     principal_point=(313.79, 238.076),
-                     image_size=(640, 480),
-                     depth_unit=0.001)
+    def __init__(self):
+        super().__init__(focal_length=(592.138, 592.138),
+                         principal_point=(313.79, 238.076),
+                         image_size=(640, 480),
+                         depth_unit=0.001)
 
 
 class CameraMSRA(Camera):
-    super().__init__(focal_length=(241.42, 241.42),
-                     principal_point=(160, 120),
-                     image_size=(320, 240))
+    def __init__(self):
+        super().__init__(focal_length=(241.42, 241.42),
+                         principal_point=(160, 120),
+                         image_size=(320, 240))

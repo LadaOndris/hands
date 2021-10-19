@@ -4,9 +4,9 @@ import numpy as np
 import estimation.jgrp2o.configuration as configs
 from src.datasets.bighand.dataset import BighandDataset
 from src.datasets.msra.dataset import MSRADataset
-from estimation.jgrp2o.preprocessing import DatasetPreprocessor
-from estimation.jgrp2o.architecture.jgrp2o import JGR_J2O
-from estimation.jgrp2o.metrics import DistancesBelowThreshold, MeanJointErrorMetric
+from src.estimation.jgrp2o.preprocessing import DatasetPreprocessor
+from src.estimation.jgrp2o.architecture.jgrp2o import JGR_J2O
+from src.estimation.jgrp2o.metrics import DistancesBelowThreshold, MeanJointErrorMetric
 from src.utils.camera import Camera
 from src.utils.paths import BIGHAND_DATASET_DIR, LOGS_DIR, MSRAHANDGESTURE_DATASET_DIR
 

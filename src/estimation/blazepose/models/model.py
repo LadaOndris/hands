@@ -1,7 +1,7 @@
 import tensorflow as tf
 from tensorflow.keras.models import Model
 
-from estimation.blazepose.models.layers import BlazeBlock
+from src.estimation.blazepose.models.layers import BlazeBlock
 
 
 class BlazePose:

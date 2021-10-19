@@ -183,7 +183,7 @@ class ComPreprocessor:
         size : Size of the bounding cube
         """
         tf.assert_rank(com, 1)
-
+        com = tf.cast(com, tf.float32)
         com_xyz = self.camera.pixel_to_world_1d(com)
         half_size = tf.constant(size, dtype=tf.float32) / 2
         # Do not subtract Z coordinate yet
@@ -348,12 +348,12 @@ def crop_to_bcube(image, bcube):
     cropped_image = image[y_start_bound:y_end_bound, x_start_bound:x_end_bound]
     z_start = tf.cast(z_start, tf.float32)
     z_end = tf.cast(z_end, tf.float32)
-    cropped_image = tf.where(cropped_image < z_start, z_start, cropped_image)
+    cropped_image = tf.where(cropped_image < z_start, z_end, cropped_image)
     cropped_image = tf.where(cropped_image > z_end, z_end, cropped_image)
 
     # Pad the cropped image if we were out of bounds
     # Set the minimum distance to z_start (not 0!).
     padded_image = tf.pad(cropped_image, [[y_start_bound - y_start, y_end - y_end_bound],
                                           [x_start_bound - x_start, x_end - x_end_bound],
-                                          [0, 0]], constant_values=z_start)
+                                          [0, 0]], constant_values=z_end)
     return padded_image

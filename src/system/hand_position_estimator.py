@@ -4,9 +4,9 @@ import src.detection.plots
 import src.utils.imaging
 import src.utils.plots as plots
 from src.detection.detector import BlazefaceDetector, YoloDetector
-from estimation.jgrp2o.architecture.jgrp2o import JGR_J2O
-from estimation.jgrp2o.configuration import Config
-from estimation.jgrp2o.preprocessing import convert_coords_to_local, DatasetPreprocessor
+from src.estimation.jgrp2o.architecture.jgrp2o import JGR_J2O
+from src.estimation.jgrp2o.configuration import Config
+from src.estimation.jgrp2o.preprocessing import convert_coords_to_local, DatasetPreprocessor
 from src.utils.camera import Camera
 from src.utils.debugging import timing
 from src.utils.imaging import read_image_from_file, tf_resize_image

@@ -1,30 +1,39 @@
 {
-    "experiment_name":                  "blazepose_heatmap_bce",
-    "trainer":                          "blazepose_trainer",
-    "model" : {
-        "im_width":                     256,
-        "im_height":                    256,
-        "heatmap_width":                128,
-        "heatmap_height":               128,
-        "heatmap_kp_sigma":             4,
-        "num_keypoints":                21,
-        "num_keypoint_features":        3,
-        "model_type":                  "SIGMOID_HEATMAP_LINEAR_REGRESS_TWO_HEAD"
+    "experiment_name": "blazepose_heatmap_bce",
+    "trainer": "blazepose_trainer",
+    "model": {
+        "im_width": 256,
+        "im_height": 256,
+        "heatmap_width": 128,
+        "heatmap_height": 128,
+        "heatmap_kp_sigma": 4,
+        "num_keypoints": 21,
+        "num_keypoint_features": 4,
+        "model_type": "SIGMOID_HEATMAP_LINEAR_REGRESS_TWO_HEAD"
     },
     "train": {
-        "train_phase":                  "HEATMAP",
-        "heatmap_loss":                 "binary_crossentropy",
-        "keypoint_loss":                "huber",
-        "loss_weights":                 {"heatmap": 1.0, "joints": 0.0},
-        "batch_size":                   16,
-        "nb_epochs":                    1000,
-        "learning_rate":                1e-4,
-        "load_weights":                 false,
-        "pretrained_weights_path":      "",
-        "initial_epoch":                0
+        "train_phase": "HEATMAP",
+        "generate_random_crop_prob": 0.0,
+        "losses": {
+            "heatmap_loss": "binary_crossentropy",
+            "keypoint_losses": {
+                "coords": "huber",
+                "presence": "binary_crossentropy",
+                "weights": [0.9, 0.1]
+            },
+            "weights": {"heatmap": 1.0, "joints": 0.0 }
+        },
+        "nb_epochs": 1000,
+        "learning_rate": 1e-4,
+        "load_weights": false,
+        "pretrained_weights_path": "",
+        "initial_epoch": 0
     },
     "test": {
-        "pck_ref_points_idxs" :         [8, 9],
-        "pck_thresh":                   0.5
+        "pck_ref_points_idxs": [
+            8,
+            9
+        ],
+        "pck_thresh": 0.5
     }
 }

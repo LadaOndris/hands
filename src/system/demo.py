@@ -9,7 +9,7 @@ from src.acceptance.base import fit_plane_through_hand, hand_orientation, joint_
     vectors_angle
 from src.acceptance.gesture_acceptance_result import GestureAcceptanceResult
 from src.detection.plots import image_plot
-from estimation.jgrp2o.preprocessing import convert_coords_to_global
+from src.estimation.jgrp2o.preprocessing import convert_coords_to_global
 from src.system.database.reader import UsecaseDatabaseReader
 from src.system.hand_position_estimator import HandPositionEstimator
 from src.utils.camera import Camera

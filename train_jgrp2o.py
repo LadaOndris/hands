@@ -5,8 +5,8 @@ import os
 import tensorflow as tf
 
 import estimation.jgrp2o.configuration as configs
-from estimation.jgrp2o.evaluation import evaluate
-from estimation.jgrp2o.train import train
+from src.estimation.jgrp2o.evaluation import evaluate
+from src.estimation.jgrp2o.train import train
 
 
 def get_configs(dataset_name: str):

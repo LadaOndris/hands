@@ -6,7 +6,7 @@ import pandas as pd
 import tensorflow as tf
 from PIL import Image
 from src.detection.plots import image_plot, plot_prediction_box
-from src.utils.camera import Camera
+from src.utils.camera import Camera, CameraBighand
 from src.utils.paths import BIGHAND_DATASET_DIR
 from src.utils.plots import _plot_depth_image
 
@@ -30,7 +30,7 @@ def plot_palm_joints_and_box(img, joints, box):
 
 
 def create_for_file(source_path: str, save_path: str):
-    camera = Camera('bighand')
+    camera = CameraBighand()
 
     df = pd.read_csv(source_path, sep="\t", header=None)
     df_joints_xyz = df.iloc[:, 1:]

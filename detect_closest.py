@@ -2,10 +2,10 @@ import argparse
 
 import numpy as np
 import tensorflow as tf
-import estimation.jgrp2o.configuration as configs
+import src.estimation.jgrp2o.configuration as configs
 from src.datasets.generators import get_source_generator
 from src.detection.closest.model import ClosestObjectDetector
-from estimation.jgrp2o.preprocessing_com import ComPreprocessor
+from src.estimation.jgrp2o.preprocessing_com import ComPreprocessor
 from src.utils.camera import Camera
 from src.detection.plots import plot_predictions_live, image_plot
 

@@ -180,3 +180,21 @@ def get_wing_loss(w=10.0, epsilon=2.0):
             )
             loss = tf.reduce_mean(tf.reduce_sum(losses, axis=[1, 2]), axis=0)
             return loss
+
+
+class JointFeaturesLoss(tf.keras.losses.Loss):
+
+    def __init__(self, coord_loss, presence_loss, weights):
+        super().__init__()
+        self.coord_loss = coord_loss
+        self.presence_loss = presence_loss
+        self.weights = weights
+
+    def call(self, y_true, y_pred):
+        coords_loss_val = self.coord_loss(y_true[..., :3], y_pred[..., :3])
+        presence_loss_val = self.presence_loss(y_true[..., 3:4], y_pred[..., 3:4])
+        coords_loss_val_mean = tf.reduce_mean(coords_loss_val, axis=-1)
+        return self.weights[0] * coords_loss_val_mean + self.weights[1] * presence_loss_val
+
+
+

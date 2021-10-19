@@ -13,10 +13,10 @@
     },
     "train": {
         "train_phase":                  "REGRESSION",
+        "generate_random_crop_prob":    0.1,
         "heatmap_loss":                 "binary_crossentropy",
         "keypoint_loss":                "huber",
         "loss_weights":                 {"heatmap": 0.0, "joints": 1.0},
-        "batch_size":                   32,
         "nb_epochs":                    1000,
         "learning_rate":                1e-3,
         "load_weights":                 false,

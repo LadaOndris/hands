@@ -1,15 +1,19 @@
 import tensorflow as tf
 import tensorflow_addons as tfa
 
+from src.estimation.blazepose.data.crop import CropType, get_crop_center_point, get_crop_type
+from src.datasets.bighand.dataset import BIGHAND_DATASET_DIR, BighandDataset
 from src.estimation.blazepose.data.rotate import rotate_tensor, rotation_angle_from_21_keypoints
-from src.estimation.jgrp2o.preprocessing import extract_bboxes, get_resize_coeffs, resize_coords
-from src.estimation.jgrp2o.preprocessing_com import ComPreprocessor, crop_to_bcube, crop_to_bounding_box
-from src.utils.camera import Camera
+from src.estimation.jgrp2o.preprocessing import get_resize_coeffs, resize_coords
+from src.estimation.jgrp2o.preprocessing_com import ComPreprocessor, crop_to_bcube
+from src.utils.camera import Camera, CameraBighand
 from src.utils.imaging import normalize_to_range, resize_bilinear_nearest
+from src.utils.plots import plot_depth_image, plot_image_with_skeleton
 
 
+@tf.function
 def preprocess(image, joints, camera: Camera, heatmap_sigma: int, joints_type, cube_size=200,
-               image_target_size=256, output_target_size=64):
+               image_target_size=256, output_target_size=64, generate_random_crop_prob=0.0):
     """
     Prepares data for BlazePose training.
 
@@ -39,52 +43,90 @@ def preprocess(image, joints, camera: Camera, heatmap_sigma: int, joints_type, c
     tf.assert_rank(joints, 2)
 
     if joints_type == 'xyz':
-        uv_global = camera.world_to_pixel_2d(joints)[..., :2]
+        keypoints_uv = camera.world_to_pixel_2d(joints)[..., :2]
+        keypoints_xyz = joints
     else:
-        uv_global = joints[..., :2]
+        keypoints_uv = joints[..., :2]
+        keypoints_xyz = camera.pixel_to_world_2d(joints)
     image = tf.cast(image, tf.float32)
 
-    # if joints_are_out_of_bounds(image, uv_global):
-    #     return None, None, None
-    cropped_image, cropped_uv, bbox = crop_image_and_joints(image, uv_global, camera, cube_size)
-    rotated_image, rotated_uv = rotate_image_and_joints(cropped_image, cropped_uv)
-    resized_image, resized_uv = resize_image_and_joints(rotated_image, rotated_uv, image_target_size, bbox)
-    normalized_image, normalized_uvz = normalize_image_and_joints(resized_image, resized_uv, joints[..., 2:3])
+    crop_type = get_crop_type(use_center_of_joints=True, generate_random_crop_prob=generate_random_crop_prob)
+    crop_center_point = get_crop_center_point(crop_type, image, keypoints_uv, keypoints_xyz, camera)
+    cropped_image, cropped_uv, bbox, min_z, max_z = crop_image_and_joints(
+        crop_center_point, image, keypoints_uv, camera, cube_size)
+
+    # Determine whether joints are located in the crop
+    keypoints_z = extract_depth(image, keypoints_uv)
+    joints_presence = get_joint_presence(cropped_image, cropped_uv, keypoints_z, min_z, max_z)
+
+    if crop_type != CropType.RANDOM:
+        cropped_image, cropped_uv = rotate_image_and_joints(cropped_image, cropped_uv)
+
+    resized_image, resized_uv = resize_image_and_joints(cropped_image, cropped_uv, image_target_size, bbox)
+    normalized_image, normalized_uvz = normalize_image_and_joints(
+        resized_image, resized_uv, joints[..., 2:3], min_z, max_z)
 
     heatmaps = generate_heatmaps(resized_uv,
                                  orig_size=tf.shape(resized_image)[:2],
                                  target_size=[output_target_size, output_target_size],
                                  sigma=heatmap_sigma)
 
-    return normalized_image, (normalized_uvz, heatmaps)
+    joint_features = tf.concat([normalized_uvz, joints_presence[:, tf.newaxis]], axis=-1)
+    return normalized_image, (joint_features, heatmaps)
 
 
-def joints_are_out_of_bounds(image, uv_coords):
-    height, width = tf.shape(image)[0], tf.shape(image)[1]
-    u = uv_coords[..., 0]
-    v = uv_coords[..., 1]
-    mask = (u < 0) | (v < 0) | (u > tf.cast(width, tf.float32)) | (v > tf.cast(height, tf.float32))
-    num_invalid = tf.math.count_nonzero(mask)
-    return tf.cast(num_invalid, tf.float64) >= tf.shape(uv_coords)[0] / 2
+def extract_depth(image, keypoints_uv):
+    keypoints_u = tf.cast(keypoints_uv[:, 0], tf.int32)
+    keypoints_u = tf.clip_by_value(keypoints_u, 0, tf.shape(image)[1] - 1)  # Clip by image width
+    keypoints_v = tf.cast(keypoints_uv[:, 1], tf.int32)
+    keypoints_v = tf.clip_by_value(keypoints_v, 0, tf.shape(image)[0] - 1)  # Clip by image height
+    keypoints_vu = tf.stack([keypoints_v, keypoints_u], axis=-1)
+    keypoints_z = tf.gather_nd(image, keypoints_vu)
+    return keypoints_z
 
 
-def crop_image_and_joints(image, uv_coords, camera, cube_size):
+def get_joint_presence(image, keypoints_vu, keypoints_z, min_z, max_z):
+    min_bounds = tf.concat([[0, 0], [min_z]], axis=-1)
+    image_hw = tf.shape(image)[:2]
+    max_bounds = tf.cast(tf.concat([image_hw, [max_z]], axis=-1), dtype=keypoints_vu.dtype)
+    cropped_vuz = tf.concat([keypoints_vu, keypoints_z], axis=-1)
+    joints_presence = points_in_bounds(cropped_vuz, min_bounds, max_bounds, dtype=tf.float32)
+    return joints_presence
+
+
+def points_in_bounds(points, min_bounds, max_bounds, dtype=tf.bool):
+    min_bounds = tf.cast(min_bounds, points.dtype)
+    max_bounds = tf.cast(max_bounds, points.dtype)
+    lower_bound_mask = points >= min_bounds
+    upper_bound_mask = points < max_bounds
+    are_in_bounds = tf.logical_and(lower_bound_mask, upper_bound_mask)
+    are_in_bounds_reduced = tf.math.reduce_all(are_in_bounds, axis=-1)
+    return tf.cast(are_in_bounds_reduced, dtype)
+
+def box_center_to_bbox(box_center, box_size):
+    half_box_dims = tf.concat([box_size, box_size], axis=0) / 2
+    top_left = box_center - half_box_dims
+    bottom_right = box_center + half_box_dims
+    bbox = tf.concat([top_left, bottom_right], axis=0)
+    return bbox
+
+
+def crop_image_and_joints(crops_center_point, image, uv_coords, camera, cube_size):
     com_preprocessor = ComPreprocessor(camera, thresholding=False)
-    bbox_raw = extract_bboxes(uv_coords[tf.newaxis, ...])[0]
-    cropped_image = crop_to_bounding_box(image, bbox_raw)
-    com = com_preprocessor.compute_coms(cropped_image[tf.newaxis, ...], offsets=bbox_raw[tf.newaxis, ..., :2])[0]
-    bcube = com_preprocessor.com_to_bcube(com, size=[cube_size, cube_size, cube_size])
+    bcube = com_preprocessor.com_to_bcube(crops_center_point, size=[cube_size, cube_size, cube_size])
     bbox = cube_to_box(bcube)
     cropped_image = crop_to_bcube(image, bcube)
     # The joints can still overflow the bounding box even after the crop
     cropped_joints_uv = uv_coords - tf.cast(bbox[tf.newaxis, :2], dtype=tf.float32)
-    return cropped_image, cropped_joints_uv, bbox
+    min_z = bcube[2]
+    max_z = bcube[5]
+    return cropped_image, cropped_joints_uv, bbox, min_z, max_z
 
 
 def rotate_image_and_joints(image, uv_coords):
-    min_value = tf.reduce_min(image)
+    max_value = tf.reduce_max(image)
     rotation_angle = rotation_angle_from_21_keypoints(uv_coords)
-    image_rotated = tfa.image.transform_ops.rotate(image, rotation_angle, fill_value=min_value)
+    image_rotated = tfa.image.transform_ops.rotate(image, rotation_angle, fill_value=max_value)
     image_center = [tf.shape(image)[1] / 2, tf.shape(image)[0] / 2]
     uv_rotated = rotate_tensor(uv_coords, rotation_angle, center=image_center)
     return image_rotated, uv_rotated
@@ -99,11 +141,11 @@ def resize_image_and_joints(image, uv_coords, image_target_size, bbox):
     return resized_image, resized_joints_uv
 
 
-def normalize_image_and_joints(image, uv_coords, z_coords):
-    min_value = tf.reduce_min(image)
-    max_value = tf.reduce_max(image)
-    normalized_image = normalize_to_range(image, [-1, 1], min_value, max_value)
-    normalized_z = normalize_to_range(z_coords, [-1, 1], min_value, max_value)
+def normalize_image_and_joints(image, uv_coords, z_coords, min_depth, max_depth):
+    # min_value = tf.reduce_min(image)
+    # max_value = tf.reduce_max(image)
+    normalized_image = normalize_to_range(image, [-1, 1], min_depth, max_depth)
+    normalized_z = normalize_to_range(z_coords, [-1, 1], min_depth, max_depth)
     normalized_uv = normalize_to_range(uv_coords, [0, 1], 0, 255)
     normalized_joints_uvz = tf.concat([normalized_uv, normalized_z], axis=-1)
     return normalized_image, normalized_joints_uvz
@@ -124,6 +166,7 @@ def cube_to_box(cube):
     return tf.concat([cube[..., 0:2], cube[..., 3:5]], axis=-1)
 
 
+@tf.function
 def generate_heatmaps(keypoints, orig_size, target_size, sigma):
     """
 
@@ -153,6 +196,7 @@ def generate_heatmaps(keypoints, orig_size, target_size, sigma):
     heatmaps_stacked = heatmaps_array.stack()
     heatmaps = tf.transpose(heatmaps_stacked, [1, 2, 0])
     return heatmaps
+
 
 @tf.function
 def draw_gaussian_point(image, point, sigma):
@@ -215,37 +259,44 @@ def try_dataset_preprocessing():
     from src.datasets.bighand.dataset import BighandDataset, BIGHAND_DATASET_DIR
     from src.utils.plots import plot_image_with_skeleton
 
-    prepare_fn = lambda image, joints: preprocess(image, joints, Camera('bighand'),  joints_type='xyz',
-                                                  heatmap_sigma=4, cube_size=180)
+    prepare_fn = lambda image, joints: preprocess(image, joints, CameraBighand(), joints_type='xyz',
+                                                  heatmap_sigma=3, cube_size=220)
     prepare_fn_shape = (tf.TensorShape([256, 256, 1]), tf.TensorShape([21, 3]), tf.TensorShape([64, 64, 21]))
     ds = BighandDataset(BIGHAND_DATASET_DIR, batch_size=1, shuffle=False,
                         prepare_output_fn=prepare_fn, prepare_output_fn_shape=prepare_fn_shape)
     train_iterator = iter(ds.train_dataset)
 
-    for image, joints, heatmap in train_iterator:
-        if joints is None:
-            print("Skipping out of bounds joints.")
-            continue
-        plot_image_with_skeleton(image, joints[:, :2])
-        break
+    for image, (joints, heatmaps) in train_iterator:
+        plot_image_with_skeleton(image[0], joints[0] * 256)
+        pass
 
 
 def try_preprocessing():
-    from src.datasets.bighand.dataset import BighandDataset, BIGHAND_DATASET_DIR
-    from src.utils.plots import plot_image_with_skeleton
-
-    ds = BighandDataset(BIGHAND_DATASET_DIR, batch_size=1, shuffle=True)
+    ds = BighandDataset(BIGHAND_DATASET_DIR, batch_size=1, shuffle=False)
     train_iterator = iter(ds.train_dataset)
+    camera = CameraBighand()
 
     for image, joints in train_iterator:
-        image, joints, heatmaps = preprocess(image[0], joints[0], Camera('bighand'), joints_type='xyz',
-                                             heatmap_sigma=4, cube_size=180)
-        if joints is None:
-            print("Skipping out of bounds joints.")
-            continue
-        plot_image_with_skeleton(image, joints[:, :2])
-        break
+        norm_image, (norm_joints, heatmaps) = preprocess(image[0], joints[0], camera, joints_type='xyz',
+                                                         heatmap_sigma=3, cube_size=220)
+        plot_image_with_skeleton(image[0], camera.world_to_pixel_2d(joints[0]))
+        plot_image_with_skeleton(norm_image, norm_joints * 256)
+        pass
+
+
+def try_random_crop():
+    ds = BighandDataset(BIGHAND_DATASET_DIR, batch_size=1, shuffle=True)
+    train_iterator = iter(ds.train_dataset)
+    camera = CameraBighand()
+
+    for image, joints in train_iterator:
+        norm_image, (norm_joints, heatmaps) = preprocess(image[0], joints[0], camera, joints_type='xyz',
+                                                         heatmap_sigma=3, cube_size=220, generate_random_crop_prob=1.0)
+        plot_image_with_skeleton(image[0], camera.world_to_pixel_2d(joints[0]))
+        plot_image_with_skeleton(norm_image, norm_joints * 256)
+        plot_depth_image(norm_image)
+        pass
 
 
 if __name__ == "__main__":
-    try_preprocessing()
+    try_random_crop()

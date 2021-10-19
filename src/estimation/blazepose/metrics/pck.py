@@ -40,23 +40,23 @@ def get_pck_metric(ref_point_pair=(2, 4), thresh=0.2):
             self.n_total.assign(0)
 
         def update_state(self, y_true, y_pred, sample_weight=None):
-
-            keypoint_thresh = 0.0
             if len(tf.shape(y_true)) == 4:  # Heatmap
                 batch_keypoints_pred = find_keypoints_from_heatmap(y_pred)
                 batch_keypoints_true = find_keypoints_from_heatmap(y_true)
                 keypoint_thresh = 0.1
-            elif len(tf.shape(y_true)) == 2:  # Regression
+            elif len(tf.shape(y_true)) == 3:  # Regression
                 batch_keypoints_pred = tf.reshape(
                     y_pred, (tf.shape(y_pred)[0], -1, 3))
                 batch_keypoints_true = tf.reshape(
                     y_true, (tf.shape(y_true)[0], -1, 3))
                 keypoint_thresh = 0.5
             else:
-                tf.print("Error: Wrong PCK input shape.")
-                exit(0)
-            n_wrongs, n_points = calc_pck(
-                batch_keypoints_true, batch_keypoints_pred, keypoint_thresh=keypoint_thresh, ref_point_pair=self.ref_point_pair, pck_thresh=self.pck_thresh)
+                raise ValueError('Error: Wrong PCK input shape.')
+            n_wrongs, n_points = calc_pck(batch_keypoints_true,
+                                          batch_keypoints_pred,
+                                          keypoint_thresh=keypoint_thresh,
+                                          ref_point_pair=self.ref_point_pair,
+                                          pck_thresh=self.pck_thresh)
             self.n_wrongs.assign_add(n_wrongs)
             self.n_total.assign_add(n_points)
 
