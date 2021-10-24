@@ -4,9 +4,9 @@
     "model": {
         "im_width": 256,
         "im_height": 256,
-        "heatmap_width": 128,
-        "heatmap_height": 128,
-        "heatmap_kp_sigma": 4,
+        "heatmap_width": 64,
+        "heatmap_height": 64,
+        "heatmap_kp_sigma": 2,
         "num_keypoints": 21,
         "num_keypoint_features": 4,
         "model_type": "SIGMOID_HEATMAP_LINEAR_REGRESS_TWO_HEAD"
@@ -24,7 +24,7 @@
             "weights": {"heatmap": 1.0, "joints": 0.0 }
         },
         "nb_epochs": 1000,
-        "learning_rate": 1e-4,
+        "learning_rate": 0.0005,
         "load_weights": false,
         "pretrained_weights_path": "",
         "initial_epoch": 0

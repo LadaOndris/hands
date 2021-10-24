@@ -1,3 +1,4 @@
+import argparse
 import json
 
 import tensorflow as tf
@@ -8,7 +9,6 @@ import src.utils.logs as logs_utils
 from src.datasets.bighand.dataset import BighandDataset
 from src.estimation.blazepose.data.preprocessing import preprocess
 from src.estimation.blazepose.metrics.mae import MeanAverageErrorMetric
-from src.estimation.blazepose.metrics.mje import MeanJointErrorMetric
 from src.estimation.blazepose.models.ModelCreator import ModelCreator
 from src.estimation.blazepose.trainers.losses import euclidean_distance_loss, focal_loss, focal_tversky, get_huber_loss, \
     get_wing_loss, JointFeaturesLoss
@@ -78,10 +78,10 @@ def train(config, batch_size, verbose):
     camera = CameraBighand()
     hm_mae_metric = MeanAverageErrorMetric(name="mae1")
     kp_mae_metric = MeanAverageErrorMetric(name="mae2")
-    kp_mje_metric = MeanJointErrorMetric(camera)
+    # kp_mje_metric = MeanJointErrorMetric(camera)
     model.compile(optimizer=Adam(train_config["learning_rate"]),
                   loss=losses, loss_weights=weights,
-                  metrics={"heatmap": [hm_mae_metric], "joints": [kp_mae_metric, kp_mje_metric]})
+                  metrics={"heatmap": [hm_mae_metric], "joints": [kp_mae_metric]})
 
     monitor_loss = 'val_loss'
     log_dir = logs_utils.make_log_dir()
@@ -96,9 +96,8 @@ def train(config, batch_size, verbose):
     prepare_fn = lambda image, joints: preprocess(image, joints, camera, joints_type='xyz', heatmap_sigma=2,
                                                   cube_size=180,
                                                   generate_random_crop_prob=train_config['generate_random_crop_prob'])
-    prepare_fn_shape = (tf.TensorShape([256, 256, 1]), tf.TensorShape([21, 3]), tf.TensorShape([64, 64, 21]))
     ds = BighandDataset(BIGHAND_DATASET_DIR, test_subject="Subject_8", batch_size=batch_size,
-                        shuffle=True, prepare_output_fn=prepare_fn, prepare_output_fn_shape=prepare_fn_shape)
+                        shuffle=True, prepare_output_fn=prepare_fn)
 
     model.fit(ds.train_dataset,
               epochs=train_config["nb_epochs"],
@@ -126,7 +125,16 @@ def freeze_heatmap_layers(model):
 
 
 if __name__ == "__main__":
-    config_path = SRC_DIR.joinpath('estimation/blazepose/configs/config_blazepose_heatmap.json')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--config', type=str, action='store', default=None,
+                        help='a config file name')
+    parser.add_argument('--verbose', type=int, action='store', default=1,
+                        help='verbose training output')
+    parser.add_argument('--batch-size', type=int, action='store', default=64,
+                        help='the number of samples in a batch')
+    args = parser.parse_args()
+
+    config_path = SRC_DIR.joinpath('estimation/blazepose/configs/', args.config)
     with open(config_path, 'r') as f:
         config = json.load(f)
-    train(config, batch_size=8, verbose=1)
+    train(config, batch_size=args.batch_size, verbose=args.verbose)

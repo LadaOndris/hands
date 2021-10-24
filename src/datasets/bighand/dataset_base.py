@@ -38,6 +38,7 @@ class BighandDatasetBase:
                 test_annotation_files += annotation_files
             else:
                 train_annotation_files += annotation_files
+        train_annotation_files = [annot for annot in train_annotation_files if 'Subject_4/76 150' in annot]
         return train_annotation_files, test_annotation_files
 
     def _get_subject_dirs(self):

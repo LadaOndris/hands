@@ -1,3 +1,4 @@
+
 import tensorflow as tf
 import tensorflow_addons as tfa
 
@@ -72,6 +73,7 @@ def preprocess(image, joints, camera: Camera, heatmap_sigma: int, joints_type, c
                                  sigma=heatmap_sigma)
 
     joint_features = tf.concat([normalized_uvz, joints_presence[:, tf.newaxis]], axis=-1)
+
     return normalized_image, (joint_features, heatmaps)
 
 
@@ -166,7 +168,6 @@ def cube_to_box(cube):
     return tf.concat([cube[..., 0:2], cube[..., 3:5]], axis=-1)
 
 
-@tf.function
 def generate_heatmaps(keypoints, orig_size, target_size, sigma):
     """
 
@@ -198,7 +199,6 @@ def generate_heatmaps(keypoints, orig_size, target_size, sigma):
     return heatmaps
 
 
-@tf.function
 def draw_gaussian_point(image, point, sigma):
     """
     Draw a 2D gaussian.
@@ -220,8 +220,10 @@ def draw_gaussian_point(image, point, sigma):
     tf.assert_rank(sigma, 0)
 
     # Check that any part of the gaussian is in-bounds
-    ul = [int(point[0] - 3 * sigma), int(point[1] - 3 * sigma)]
-    br = [int(point[0] + 3 * sigma + 1), int(point[1] + 3 * sigma + 1)]
+    ul = [tf.cast((tf.math.round(point[0] - 3 * sigma)), tf.int32),
+          tf.cast((tf.math.round(point[1] - 3 * sigma)), tf.int32)]
+    br = [tf.cast((tf.math.round(point[0] + 3 * sigma + 1)), tf.int32),
+          tf.cast((tf.math.round(point[1] + 3 * sigma + 1)), tf.int32)]
     if (ul[0] > image.shape[1] or ul[1] >= image.shape[0] or
             br[0] < 0 or br[1] < 0):
         # If not, just return the image as is

@@ -11,12 +11,11 @@ from src.utils.paths import BIGHAND_DATASET_DIR
 class BighandDataset(BighandDatasetBase):
 
     def __init__(self, dataset_path, test_subject=None, batch_size=16, shuffle=True,
-                 prepare_output_fn=None, prepare_output_fn_shape=None):
+                 prepare_output_fn=None):
         super().__init__(dataset_path, 'full_annotation', test_subject, batch_size)
         self.shuffle = shuffle
         self.batch_index = 0
         self.prepare_output_fn = prepare_output_fn
-        self.prepare_output_fn_shape = prepare_output_fn_shape
         self.camera = CameraBighand()
 
         self.train_dataset = self._build_dataset(self.train_annotation_files, self.train_annotations)
@@ -63,7 +62,7 @@ class BighandDataset(BighandDatasetBase):
             dataset = dataset.filter(self._joints_are_in_bounds)
             dataset = dataset.map(self.prepare_output_fn)
 
-        dataset = dataset.batch(self.batch_size)
+        dataset = dataset.batch(self.batch_size, drop_remainder=True)
         dataset = dataset.prefetch(buffer_size=1)
         return dataset
 
