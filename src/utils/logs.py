@@ -7,7 +7,7 @@ def get_current_timestamp():
     return datetime.now().strftime("%Y%m%d-%H%M%S")
 
 
-def make_timestamped_dir(path: str) -> str:
+def make_timestamped_dir(path: str, suffix: str = '') -> str:
     """
     Creates a new directory with a name of a current timestamp
     in a location defined by 'path'.
@@ -20,18 +20,18 @@ def make_timestamped_dir(path: str) -> str:
     Returns path to the new directory.
     """
     timestamp = get_current_timestamp()
-    subdir = path.joinpath(timestamp)
+    subdir = path.joinpath(timestamp + suffix)
     if not os.path.isdir(subdir):
         os.makedirs(subdir)
     return subdir
 
 
-def make_log_dir() -> str:
+def make_log_dir(suffix: str = '') -> str:
     """
     Creates a new directory with a timestamp in the logs directory.
     """
     make_dir(LOGS_DIR)
-    return make_timestamped_dir(LOGS_DIR)
+    return make_timestamped_dir(LOGS_DIR, suffix)
 
 
 def make_dir(dir):

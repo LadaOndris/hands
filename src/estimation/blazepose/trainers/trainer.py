@@ -90,7 +90,8 @@ def train(config, batch_size, verbose, weights=None):
                   metrics={"heatmap": [hm_mae_metric], "joints": [kp_mae_metric]})
 
     monitor_loss = 'val_loss'
-    log_dir = logs_utils.make_log_dir()
+    log_dir_suffix = config['train']['train_phase']
+    log_dir = logs_utils.make_log_dir(suffix=log_dir_suffix)
     checkpoint_path = logs_utils.compose_ckpt_path(log_dir)
     callbacks = [
         TensorBoard(log_dir=log_dir, update_freq='batch'),
