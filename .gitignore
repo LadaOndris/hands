@@ -4,6 +4,7 @@ __pycache__/
 *.npy
 tmp
 
+old_logs/
 logs/
 other/
 saved_models/ 
