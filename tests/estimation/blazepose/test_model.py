@@ -29,7 +29,7 @@ class BlazePoseArchitecture(tf.test.TestCase):
 
     def test_two_head_model_output_shape(self):
         n_points = 21
-        model = ModelCreator.create_model('SIGMOID_HEATMAP_LINEAR_REGRESS_TWO_HEAD', n_points=n_points)
+        model = ModelCreator.create_model('SIGMOID_HEATMAP_LINEAR_REGRESS_TWOHEAD', n_points=n_points)
 
         input_tensor = tf.random.normal(shape=[1, 256, 256, 1])
         expected_heatmap_output_shape = tf.TensorShape([1, 64, 64, n_points * 1])

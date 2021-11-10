@@ -193,6 +193,8 @@ class JointFeaturesLoss(tf.keras.losses.Loss):
     def call(self, y_true, y_pred):
         coords_loss_val = self.coord_loss(y_true[..., :3], y_pred[..., :3])
         presence_loss_val = self.presence_loss(y_true[..., 3:4], y_pred[..., 3:4])
+        # Compute coords loss if the joint is present
+        coords_loss_val *= y_true[..., 3:4]
         coords_loss_val_mean = tf.reduce_mean(coords_loss_val, axis=-1)
         return self.weights[0] * coords_loss_val_mean + self.weights[1] * presence_loss_val
 

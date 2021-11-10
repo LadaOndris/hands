@@ -1,9 +1,9 @@
-
+import numpy as np
 import tensorflow as tf
 import tensorflow_addons as tfa
 
-from src.estimation.blazepose.data.crop import CropType, get_crop_center_point, get_crop_type
 from src.datasets.bighand.dataset import BIGHAND_DATASET_DIR, BighandDataset
+from src.estimation.blazepose.data.crop import CropType, get_crop_center_point, get_crop_type
 from src.estimation.blazepose.data.rotate import rotate_tensor, rotation_angle_from_21_keypoints
 from src.estimation.jgrp2o.preprocessing import get_resize_coeffs, resize_coords
 from src.estimation.jgrp2o.preprocessing_com import ComPreprocessor, crop_to_bcube
@@ -14,7 +14,8 @@ from src.utils.plots import plot_depth_image, plot_image_with_skeleton
 
 @tf.function
 def preprocess(image, joints, camera: Camera, heatmap_sigma: int, joints_type, cube_size=200,
-               image_target_size=256, output_target_size=64, generate_random_crop_prob=0.0):
+               image_target_size=256, output_target_size=64, generate_random_crop_prob=0.0,
+               random_angle_stddev=0, shift_stddev=None):
     """
     Prepares data for BlazePose training.
 
@@ -53,6 +54,10 @@ def preprocess(image, joints, camera: Camera, heatmap_sigma: int, joints_type, c
 
     crop_type = get_crop_type(use_center_of_joints=True, generate_random_crop_prob=generate_random_crop_prob)
     crop_center_point = get_crop_center_point(crop_type, image, keypoints_uv, keypoints_xyz, camera)
+
+    if shift_stddev is not None:
+        crop_center_point = shift_point(crop_center_point, shift_stddev * cube_size)
+
     cropped_image, cropped_uv, bbox, min_z, max_z = crop_image_and_joints(
         crop_center_point, image, keypoints_uv, camera, cube_size)
 
@@ -61,7 +66,7 @@ def preprocess(image, joints, camera: Camera, heatmap_sigma: int, joints_type, c
     joints_presence = get_joint_presence(cropped_image, cropped_uv, keypoints_z, min_z, max_z)
 
     if crop_type != CropType.RANDOM:
-        cropped_image, cropped_uv = rotate_image_and_joints(cropped_image, cropped_uv)
+        cropped_image, cropped_uv = rotate_image_and_joints(cropped_image, cropped_uv, random_angle_stddev)
 
     resized_image, resized_uv = resize_image_and_joints(cropped_image, cropped_uv, image_target_size, bbox)
     normalized_image, normalized_uvz = normalize_image_and_joints(
@@ -75,6 +80,14 @@ def preprocess(image, joints, camera: Camera, heatmap_sigma: int, joints_type, c
     joint_features = tf.concat([normalized_uvz, joints_presence[:, tf.newaxis]], axis=-1)
 
     return normalized_image, (joint_features, heatmaps)
+
+
+def shift_point(point_xyz, stddev):
+    translation_offset = tf.random.truncated_normal(shape=[3], mean=0, stddev=stddev)
+    # translation_offset = tf.cast(translation_offset, dtype=tf.int32)
+    # translation = tf.concat([translation_offset, translation_offset], axis=-1)  # shape [batch_size, 6]
+    points_translated = point_xyz + translation_offset
+    return points_translated
 
 
 def extract_depth(image, keypoints_uv):
@@ -105,6 +118,7 @@ def points_in_bounds(points, min_bounds, max_bounds, dtype=tf.bool):
     are_in_bounds_reduced = tf.math.reduce_all(are_in_bounds, axis=-1)
     return tf.cast(are_in_bounds_reduced, dtype)
 
+
 def box_center_to_bbox(box_center, box_size):
     half_box_dims = tf.concat([box_size, box_size], axis=0) / 2
     top_left = box_center - half_box_dims
@@ -125,12 +139,26 @@ def crop_image_and_joints(crops_center_point, image, uv_coords, camera, cube_siz
     return cropped_image, cropped_joints_uv, bbox, min_z, max_z
 
 
-def rotate_image_and_joints(image, uv_coords):
+def rotate_image_and_joints(image, uv_coords, random_angle_stddev):
+    """
+
+    Parameters
+    ----------
+    image
+    uv_coords
+    random_angle_stddev Maximum random angle deviation from the best rotation.
+
+    Returns
+    -------
+
+    """
     max_value = tf.reduce_max(image)
     rotation_angle = rotation_angle_from_21_keypoints(uv_coords)
-    image_rotated = tfa.image.transform_ops.rotate(image, rotation_angle, fill_value=max_value)
+    rotation_angle_augmented = tf.random.normal(mean=rotation_angle, stddev=random_angle_stddev, shape=[1])[0]
+
+    image_rotated = tfa.image.transform_ops.rotate(image, rotation_angle_augmented, fill_value=max_value)
     image_center = [tf.shape(image)[1] / 2, tf.shape(image)[0] / 2]
-    uv_rotated = rotate_tensor(uv_coords, rotation_angle, center=image_center)
+    uv_rotated = rotate_tensor(uv_coords, rotation_angle_augmented, center=image_center)
     return image_rotated, uv_rotated
 
 
@@ -219,11 +247,14 @@ def draw_gaussian_point(image, point, sigma):
     tf.assert_rank(point, 1)
     tf.assert_rank(sigma, 0)
 
+    point = tf.cast(tf.math.round(point), tf.int32)
+    # point = [int(point[0]), int(point[1])]
+
     # Check that any part of the gaussian is in-bounds
-    ul = [tf.cast((tf.math.round(point[0] - 3 * sigma)), tf.int32),
-          tf.cast((tf.math.round(point[1] - 3 * sigma)), tf.int32)]
-    br = [tf.cast((tf.math.round(point[0] + 3 * sigma + 1)), tf.int32),
-          tf.cast((tf.math.round(point[1] + 3 * sigma + 1)), tf.int32)]
+    ul = [point[0] - 3 * sigma,
+          point[1] - 3 * sigma]
+    br = [point[0] + 3 * sigma + 1,
+          point[1] + 3 * sigma + 1]
     if (ul[0] > image.shape[1] or ul[1] >= image.shape[0] or
             br[0] < 0 or br[1] < 0):
         # If not, just return the image as is
@@ -263,9 +294,8 @@ def try_dataset_preprocessing():
 
     prepare_fn = lambda image, joints: preprocess(image, joints, CameraBighand(), joints_type='xyz',
                                                   heatmap_sigma=3, cube_size=220)
-    prepare_fn_shape = (tf.TensorShape([256, 256, 1]), tf.TensorShape([21, 3]), tf.TensorShape([64, 64, 21]))
     ds = BighandDataset(BIGHAND_DATASET_DIR, batch_size=1, shuffle=False,
-                        prepare_output_fn=prepare_fn, prepare_output_fn_shape=prepare_fn_shape)
+                        prepare_output_fn=prepare_fn)
     train_iterator = iter(ds.train_dataset)
 
     for image, (joints, heatmaps) in train_iterator:
@@ -274,13 +304,14 @@ def try_dataset_preprocessing():
 
 
 def try_preprocessing():
-    ds = BighandDataset(BIGHAND_DATASET_DIR, batch_size=1, shuffle=False)
+    ds = BighandDataset(BIGHAND_DATASET_DIR, batch_size=1, shuffle=True)
     train_iterator = iter(ds.train_dataset)
     camera = CameraBighand()
 
     for image, joints in train_iterator:
         norm_image, (norm_joints, heatmaps) = preprocess(image[0], joints[0], camera, joints_type='xyz',
-                                                         heatmap_sigma=3, cube_size=220)
+                                                         heatmap_sigma=3, cube_size=180, random_angle_stddev=np.pi / 8,
+                                                         shift_stddev=0.05)
         plot_image_with_skeleton(image[0], camera.world_to_pixel_2d(joints[0]))
         plot_image_with_skeleton(norm_image, norm_joints * 256)
         pass
@@ -301,4 +332,4 @@ def try_random_crop():
 
 
 if __name__ == "__main__":
-    try_random_crop()
+    try_preprocessing()

@@ -4,7 +4,7 @@ from tensorflow.keras.models import Model
 from src.estimation.blazepose.models.layers import BlazeBlock
 
 
-class BlazePose:
+class BlazePoseFull:
 
     def __init__(self, num_keypoints: int, num_keypoint_features: int):
 
@@ -91,7 +91,7 @@ class BlazePose:
         # === Regression ===
 
         #  In: 1, 64, 64, 48)
-        self.conv12a = BlazeBlock(block_num=4, channel=96, name_prefix="regression_conv12a_")  # input res: 64
+        self.conv12a = BlazeBlock(block_num=4, channel=96, name="regression_conv12a_")  # input res: 64
         self.conv12b = tf.keras.models.Sequential([
             tf.keras.layers.DepthwiseConv2D(
                 kernel_size=3, padding="same", activation=None, name="regression_conv12b_depthwise"),
@@ -99,7 +99,7 @@ class BlazePose:
                 filters=96, kernel_size=1, activation="relu", name="regression_conv12b_conv1x1")
         ], name="regression_conv12b")
 
-        self.conv13a = BlazeBlock(block_num=5, channel=192, name_prefix="regression_conv13a_")  # input res: 32
+        self.conv13a = BlazeBlock(block_num=5, channel=192, name="regression_conv13a_")  # input res: 32
         self.conv13b = tf.keras.models.Sequential([
             tf.keras.layers.DepthwiseConv2D(
                 kernel_size=3, padding="same", activation=None, name="regression_conv13b_depthwise"),
@@ -107,7 +107,7 @@ class BlazePose:
                 filters=192, kernel_size=1, activation="relu", name="regression_conv13b_conv1x1")
         ], name="regression_conv13b")
 
-        self.conv14a = BlazeBlock(block_num=6, channel=288, name_prefix="regression_conv14a_")  # input res: 16
+        self.conv14a = BlazeBlock(block_num=6, channel=288, name="regression_conv14a_")  # input res: 16
         self.conv14b = tf.keras.models.Sequential([
             tf.keras.layers.DepthwiseConv2D(
                 kernel_size=3, padding="same", activation=None, name="regression_conv14b_depthwise"),
@@ -116,8 +116,8 @@ class BlazePose:
         ], name="regression_conv14b")
 
         self.conv15 = tf.keras.models.Sequential([
-            BlazeBlock(block_num=7, channel=288, channel_padding=0, name_prefix="regression_conv15a_"),
-            BlazeBlock(block_num=7, channel=288, channel_padding=0, name_prefix="regression_conv15b_")
+            BlazeBlock(block_num=7, channel=288, channel_padding=0, name="regression_conv15a_"),
+            BlazeBlock(block_num=7, channel=288, channel_padding=0, name="regression_conv15b_")
         ], name="regression_conv15")
 
         # 5 = UVZ coordinates + hand presence + handedness
@@ -167,7 +167,7 @@ class BlazePose:
         # === Regression ===
 
         # Stop gradient for regression on 2-head model
-        if model_type == "TWO_HEAD":
+        if model_type == "TWOHEAD":
             x = tf.keras.backend.stop_gradient(x)
             y2 = tf.keras.backend.stop_gradient(y2)
             y3 = tf.keras.backend.stop_gradient(y3)
@@ -184,7 +184,7 @@ class BlazePose:
         # In: 1, 2, 2, 288
         joints = self.conv16(x)
 
-        if model_type == "TWO_HEAD":
+        if model_type == "TWOHEAD":
             return Model(inputs=input_x, outputs=[joints, heatmap])
         elif model_type == "HEATMAP":
             return Model(inputs=input_x, outputs=heatmap)

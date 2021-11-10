@@ -1,27 +1,36 @@
 {
     "experiment_name":                  "blazepose_regress_huber",
     "trainer":                          "blazepose_trainer",
-    "model" : {
-        "im_width":                     256,
-        "im_height":                    256,
-        "heatmap_width":                128,
-        "heatmap_height":               128,
-        "heatmap_kp_sigma":             4,
-        "num_keypoints":                21,
-        "num_keypoint_features":        3,
-        "model_type":                  "SIGMOID_HEATMAP_LINEAR_REGRESS_TWO_HEAD"
+    "model": {
+        "im_width": 256,
+        "im_height": 256,
+        "heatmap_width": 64,
+        "heatmap_height": 64,
+        "heatmap_kp_sigma": 2,
+        "num_keypoints": 21,
+        "num_keypoint_features": 4,
+        "cube_size": 180,
+        "model_type": "LIGHT_SIGMOID_HEATMAP_LINEAR_REGRESS_TWOHEAD"
     },
     "train": {
-        "train_phase":                  "REGRESSION",
-        "generate_random_crop_prob":    0.1,
-        "heatmap_loss":                 "binary_crossentropy",
-        "keypoint_loss":                "huber",
-        "loss_weights":                 {"heatmap": 0.0, "joints": 1.0},
-        "nb_epochs":                    1000,
-        "learning_rate":                1e-3,
-        "load_weights":                 false,
-        "pretrained_weights_path":      "",
-        "initial_epoch":                0
+        "train_phase": "REGRESSION",
+        "generate_random_crop_prob": 0.0,
+        "random_angle_stddev": 0.392,
+        "shift_stddev": 0.05,
+        "losses": {
+            "heatmap_loss": "binary_crossentropy",
+            "keypoint_losses": {
+                "coords": "huber",
+                "presence": "binary_crossentropy",
+                "weights": [0.9, 0.1]
+            },
+            "weights": {"heatmap": 0.0, "joints": 1.0 }
+        },
+        "nb_epochs": 1000,
+        "learning_rate": 0.0005,
+        "load_weights": true,
+        "pretrained_weights_path": "logs/20211026-211952/train_ckpts/weights.39.h5",
+        "initial_epoch": 0
     },
     "test": {
         "pck_ref_points_idxs" :         [8, 9],

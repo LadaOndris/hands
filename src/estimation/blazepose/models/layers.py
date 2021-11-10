@@ -14,15 +14,15 @@ class ChannelPadding(tf.keras.layers.Layer):
         return tf.pad(x, self.pad_shape)
 
 
-class BlazeBlock(tf.keras.Model):
-    def __init__(self, block_num=3, channel=48, channel_padding=1, name_prefix=""):
-        super(BlazeBlock, self).__init__()
+class BlazeBlock(tf.keras.layers.Layer):
+    def __init__(self, block_num=3, channel=48, channel_padding=1, name=""):
+        super(BlazeBlock, self).__init__(name=name)
 
         self.downsample_a = tf.keras.models.Sequential([
             tf.keras.layers.DepthwiseConv2D(kernel_size=3, strides=(
-                2, 2), padding='same', activation=None, name=name_prefix + "downsample_a_depthwise"),
+                2, 2), padding='same', activation=None, name=name + "downsample_a_depthwise"),
             tf.keras.layers.Conv2D(
-                filters=channel, kernel_size=1, activation=None, name=name_prefix + "downsample_a_conv1x1")
+                filters=channel, kernel_size=1, activation=None, name=name + "downsample_a_conv1x1")
         ])
         if channel_padding:
             self.downsample_b = tf.keras.models.Sequential([
@@ -36,7 +36,7 @@ class BlazeBlock(tf.keras.Model):
         for i in range(block_num):
             self.conv.append(tf.keras.models.Sequential([
                 tf.keras.layers.DepthwiseConv2D(
-                    kernel_size=3, padding='same', activation=None, name=name_prefix + "conv_block_{}".format(i + 1)),
+                    kernel_size=3, padding='same', activation=None, name=name + "conv_block_{}".format(i + 1)),
                 tf.keras.layers.Conv2D(
                     filters=channel, kernel_size=1, activation=None)
             ]))

@@ -9,11 +9,14 @@
         "heatmap_kp_sigma": 2,
         "num_keypoints": 21,
         "num_keypoint_features": 4,
-        "model_type": "SIGMOID_HEATMAP_LINEAR_REGRESS_TWO_HEAD"
+        "cube_size": 180,
+        "model_type": "LIGHT_SIGMOID_HEATMAP_LINEAR_REGRESS_TWOHEAD"
     },
     "train": {
         "train_phase": "HEATMAP",
         "generate_random_crop_prob": 0.0,
+        "random_angle_stddev": 0.392,
+        "shift_stddev": 0.05,
         "losses": {
             "heatmap_loss": "binary_crossentropy",
             "keypoint_losses": {
@@ -30,6 +33,7 @@
         "initial_epoch": 0
     },
     "test": {
+        "pretrained_weights_path": "logs/20211026-211952/train_ckpts/weights.39.h5",
         "pck_ref_points_idxs": [
             8,
             9
