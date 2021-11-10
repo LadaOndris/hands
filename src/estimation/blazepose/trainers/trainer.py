@@ -85,9 +85,6 @@ def train(config, batch_size, verbose, weights=None):
     hm_mae_metric = MeanAverageErrorMetric(name="mae1")
     kp_mae_metric = MeanAverageErrorMetric(name="mae2")
     # kp_mje_metric = MeanJointErrorMetric(camera)
-    model.compile(optimizer=Adam(train_config["learning_rate"]),
-                  loss=losses, loss_weights=weights,
-                  metrics={"heatmap": [hm_mae_metric], "joints": [kp_mae_metric]})
 
     monitor_loss = 'val_loss'
     log_dir_suffix = config['train']['train_phase']
@@ -111,6 +108,14 @@ def train(config, batch_size, verbose, weights=None):
 
     steps_per_epoch = min(5000, ds.num_train_batches)
     validation_steps = min(steps_per_epoch * 0.1, ds.num_test_batches)
+
+    lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(initial_learning_rate=train_config["learning_rate"],
+                                                                 decay_steps=steps_per_epoch,
+                                                                 decay_rate=train_config["learning_rate_decay"])
+    model.compile(optimizer=Adam(lr_schedule),
+                  loss=losses, loss_weights=weights,
+                  metrics={"heatmap": [hm_mae_metric], "joints": [kp_mae_metric]})
+
     model.fit(ds.train_dataset,
               epochs=train_config["nb_epochs"],
               steps_per_epoch=steps_per_epoch,

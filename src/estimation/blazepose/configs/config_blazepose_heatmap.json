@@ -28,6 +28,7 @@
         },
         "nb_epochs": 1000,
         "learning_rate": 0.0005,
+        "learning_decay_rate": 0.945,
         "load_weights": false,
         "pretrained_weights_path": "",
         "initial_epoch": 0

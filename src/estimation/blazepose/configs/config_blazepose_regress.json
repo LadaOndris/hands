@@ -28,6 +28,7 @@
         },
         "nb_epochs": 1000,
         "learning_rate": 0.0005,
+        "learning_decay_rate": 0.945,
         "load_weights": true,
         "pretrained_weights_path": "logs/20211026-211952/train_ckpts/weights.39.h5",
         "initial_epoch": 0
