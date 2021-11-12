@@ -35,6 +35,7 @@
     },
     "test": {
         "pck_ref_points_idxs" :         [8, 9],
-        "pck_thresh":                   0.5
+        "pck_thresh":                   0.5,
+        "weights_path": "logs/20211103-014745/train_ckpts/weights.40.h5"
     }
 }

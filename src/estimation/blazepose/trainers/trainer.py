@@ -87,7 +87,7 @@ def train(config, batch_size, verbose, weights=None):
     # kp_mje_metric = MeanJointErrorMetric(camera)
 
     monitor_loss = 'val_loss'
-    log_dir_suffix = config['train']['train_phase']
+    log_dir_suffix = '_' + config['train']['train_phase']
     log_dir = logs_utils.make_log_dir(suffix=log_dir_suffix)
     checkpoint_path = logs_utils.compose_ckpt_path(log_dir)
     callbacks = [
@@ -111,7 +111,7 @@ def train(config, batch_size, verbose, weights=None):
 
     lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(initial_learning_rate=train_config["learning_rate"],
                                                                  decay_steps=steps_per_epoch,
-                                                                 decay_rate=train_config["learning_rate_decay"])
+                                                                 decay_rate=train_config["learning_decay_rate"])
     model.compile(optimizer=Adam(lr_schedule),
                   loss=losses, loss_weights=weights,
                   metrics={"heatmap": [hm_mae_metric], "joints": [kp_mae_metric]})
