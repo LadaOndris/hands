@@ -14,17 +14,14 @@
     },
     "train": {
         "train_phase": "REGRESSION",
-        "generate_random_crop_prob": 0.0,
+        "generate_random_crop_prob": 0.1,
         "random_angle_stddev": 0.392,
         "shift_stddev": 0.05,
         "losses": {
             "heatmap_loss": "binary_crossentropy",
-            "keypoint_losses": {
-                "coords": "huber",
-                "presence": "binary_crossentropy",
-                "weights": [0.9, 0.1]
-            },
-            "weights": {"heatmap": 0.0, "joints": 1.0 }
+            "keypoint_loss": "huber",
+            "presence_loss": "binary_crossentropy",
+            "weights": {"heatmap": 0.0, "joints": 0.9, "presence": 0.1 }
         },
         "nb_epochs": 1000,
         "learning_rate": 0.0005,

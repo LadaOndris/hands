@@ -11,7 +11,7 @@ from src.estimation.blazepose.data.preprocessing import preprocess
 from src.estimation.blazepose.metrics.mae import MeanAverageErrorMetric
 from src.estimation.blazepose.models.ModelCreator import ModelCreator
 from src.estimation.blazepose.trainers.losses import euclidean_distance_loss, focal_loss, focal_tversky, get_huber_loss, \
-    get_wing_loss, JointFeaturesLoss
+    get_wing_loss
 from src.estimation.blazepose.trainers.TrainPhase import TrainPhase
 from src.utils.camera import CameraBighand
 from src.utils.paths import BIGHAND_DATASET_DIR, ROOT_DIR, SRC_DIR
@@ -20,14 +20,12 @@ from src.utils.paths import BIGHAND_DATASET_DIR, ROOT_DIR, SRC_DIR
 def get_loss_functions(config_losses):
     weights = config_losses['weights']
     heatmap_loss = get_loss_by_name(config_losses['heatmap_loss'])
-
-    keypoint_losses_weights = config_losses['keypoint_losses']['weights']
-    keypoint_coord_loss = get_loss_by_name(config_losses['keypoint_losses']['coords'])
-    keypoint_presence_loss = get_loss_by_name(config_losses['keypoint_losses']['presence'])
-    keypoint_loss = JointFeaturesLoss(keypoint_coord_loss, keypoint_presence_loss, keypoint_losses_weights)
+    coords_loss = get_loss_by_name(config_losses['keypoint_loss'])
+    presence_loss = get_loss_by_name(config_losses['presence_loss'])
 
     losses = {'heatmap': heatmap_loss,
-              'joints': keypoint_loss}
+              'joints': coords_loss,
+              'presence': presence_loss}
     return losses, weights
 
 
@@ -54,12 +52,12 @@ def load_model(config, weights):
                                       model_config["num_keypoints"],
                                       model_config['num_keypoint_features'])
     if weights is not None:
-        model.load_weights(weights)
+        model.load_weights(weights, by_name=True, skip_mismatch=True)
     elif train_config["load_weights"]:
         print("Loading model weights: " +
               train_config["pretrained_weights_path"])
         weights_path = ROOT_DIR.joinpath(train_config["pretrained_weights_path"])
-        model.load_weights(weights_path)
+        model.load_weights(weights_path, by_name=True, skip_mismatch=True)
 
     train_phase = TrainPhase(train_config.get("train_phase", "UNKNOWN"))
     if train_phase == train_phase.HEATMAP:
@@ -114,7 +112,9 @@ def train(config, batch_size, verbose, weights=None):
                                                                  decay_rate=train_config["learning_decay_rate"])
     model.compile(optimizer=Adam(lr_schedule),
                   loss=losses, loss_weights=weights,
-                  metrics={"heatmap": [hm_mae_metric], "joints": [kp_mae_metric]})
+                  metrics={"heatmap": [hm_mae_metric],
+                           "joints": [kp_mae_metric],
+                           "presence": [tf.keras.metrics.BinaryAccuracy()]})
 
     model.fit(ds.train_dataset,
               epochs=train_config["nb_epochs"],

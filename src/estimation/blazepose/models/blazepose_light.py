@@ -13,17 +13,17 @@ class BlazePoseLight:
 
         filters = [16, 32, 64, 128, 192]
 
-        self.conv1 = tf.keras.layers.Conv2D(
+        self.conv1_input = tf.keras.layers.Conv2D(
             filters=filters[0], kernel_size=3, strides=(2, 2), padding='same', activation='relu'
         )
 
-        self.conv2_1 = tf.keras.models.Sequential([
+        self.conv2_1_input = tf.keras.models.Sequential([
             tf.keras.layers.DepthwiseConv2D(
                 kernel_size=3, padding='same', activation=None),
             tf.keras.layers.Conv2D(filters=filters[0], kernel_size=1, activation=None)
         ])
 
-        self.conv2_2 = tf.keras.models.Sequential([
+        self.conv2_2_input = tf.keras.models.Sequential([
             tf.keras.layers.DepthwiseConv2D(
                 kernel_size=3, padding='same', activation=None),
             tf.keras.layers.Conv2D(filters=filters[0], kernel_size=1, activation=None)
@@ -109,45 +109,50 @@ class BlazePoseLight:
             BlazeBlock(block_num=7, channel=filters[4], channel_padding=0, name="regression_conv15b_")
         ], name="regression_conv15")
 
-        # 5 = UVZ coordinates + hand presence + handedness
-        self.conv16 = tf.keras.models.Sequential([
+        joints_features = 3
+        self.conv16_joints = tf.keras.models.Sequential([
             tf.keras.layers.Conv2D(
-                filters=self.num_keypoint_features * self.num_keypoints, kernel_size=2, activation=None),
-            tf.keras.layers.Reshape((self.num_keypoints, self.num_keypoint_features), name="regression_final_dense")
+                filters=joints_features * self.num_keypoints, kernel_size=2, activation=None),
+            tf.keras.layers.Reshape((self.num_keypoints, joints_features), name="regression_final_dense")
         ], name="joints")
+
+        presence_features = 1
+        self.conv16_presence = tf.keras.models.Sequential([
+            tf.keras.layers.Conv2D(
+                filters=presence_features * self.num_keypoints, kernel_size=2, activation=None),
+            tf.keras.layers.Reshape((self.num_keypoints, presence_features), name="regression_final_dense"),
+            tf.keras.layers.Activation("sigmoid")
+        ], name="presence")
 
     def build_model(self, model_type):
 
         input_x = tf.keras.layers.Input(shape=(256, 256, 1))
 
         # Block 1
-        # In: 1x256x256x3
-        x = self.conv1(input_x)
+        # In: 1x256x256x1
+        x = self.conv1_input(input_x)
 
         # Block 2
-        # In: 1x128x128x24
-        x = x + self.conv2_1(x)
+        # In: 1x128x128x16
+        x = x + self.conv2_1_input(x)
         x = tf.keras.activations.relu(x)
 
         # Block 3
-        # In: 1x128x128x24
-        x = x + self.conv2_2(x)
+        # In: 1x128x128x16
+        x = x + self.conv2_2_input(x)
         y0 = tf.keras.activations.relu(x)
 
         # === Heatmap ===
 
-        # In: 1, 128, 128, 24
-        y1 = self.conv3(y0)
-        y2 = self.conv4(y1)
-        y3 = self.conv5(y2)
-        y4 = self.conv6(y3)
+        # In: 1, 128, 128, 16
+        y1 = self.conv3(y0)  # 64, 64, 32
+        y2 = self.conv4(y1)  # 32, 32, 64
+        y3 = self.conv5(y2)  # 16, 16, 128
+        y4 = self.conv6(y3)  # 8, 8, 192
 
-        x = self.conv7a(y4) + self.conv7b(y3)
-        x = self.conv8a(x) + self.conv8b(y2)
-        # In: 1, 32, 32, 96
-        x = self.conv9a(x) + self.conv9b(y1)
-        # In: 1, 64, 64, 48
-        # y = self.conv10a(x) + self.conv10b(y0)
+        x = self.conv7a(y4) + self.conv7b(y3)  # 16, 16, 32
+        x = self.conv8a(x) + self.conv8b(y2)  # 32, 32, 32
+        x = self.conv9a(x) + self.conv9b(y1)  # 64, 64, 32
         y = self.conv11(x)
 
         # In: 1, 64, 64, n_points
@@ -156,25 +161,26 @@ class BlazePoseLight:
         # === Regression ===
 
         # Stop gradient for regression on 2-head model
-        if model_type == "TWOHEAD":
+        if model_type == "TWOHEAD" or model_type == "REGRESSION":
             x = tf.keras.backend.stop_gradient(x)
             y2 = tf.keras.backend.stop_gradient(y2)
             y3 = tf.keras.backend.stop_gradient(y3)
             y4 = tf.keras.backend.stop_gradient(y4)
 
-        # In: 1, 64, 64, 96
-        x = self.conv12a(x) + self.conv12b(y2)
-        # In: 1, 32, 32, 96
-        x = self.conv13a(x) + self.conv13b(y3)
-        # In: 1, 16, 16, 192
+        # In: [1, 64, 64, 64],  [1,  32, 32, 64]
+        x = self.conv12a(x) + self.conv12b(y2)  # 32, 32, 64
+        # In: [1, 32, 32, 64],
+        x = self.conv13a(x) + self.conv13b(y3)  #
+        # In: 1, 16, 16, 128
         x = self.conv14a(x) + self.conv14b(y4)
-        # In: 1, 8, 8, 288
+        # In: 1, 8, 8, 196
         x = self.conv15(x)
-        # In: 1, 2, 2, 288
-        joints = self.conv16(x)
+        # In: 1, 2, 2, 196
+        joints = self.conv16_joints(x)
+        presence = self.conv16_presence(x)
 
         if model_type == "TWOHEAD":
-            return Model(inputs=input_x, outputs=[joints, heatmap])
+            return Model(inputs=input_x, outputs=[joints, heatmap, presence])
         elif model_type == "HEATMAP":
             return Model(inputs=input_x, outputs=heatmap)
         elif model_type == "REGRESSION":

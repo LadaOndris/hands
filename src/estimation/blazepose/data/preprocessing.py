@@ -77,9 +77,7 @@ def preprocess(image, joints, camera: Camera, heatmap_sigma: int, joints_type, c
                                  target_size=[output_target_size, output_target_size],
                                  sigma=heatmap_sigma)
 
-    joint_features = tf.concat([normalized_uvz, joints_presence[:, tf.newaxis]], axis=-1)
-
-    return normalized_image, (joint_features, heatmaps)
+    return normalized_image, (normalized_uvz, heatmaps, joints_presence[:, tf.newaxis])
 
 
 def shift_point(point_xyz, stddev):
