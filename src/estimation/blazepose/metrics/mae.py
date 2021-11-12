@@ -1,19 +1,17 @@
 import tensorflow as tf
-import numpy as np
 
 from src.estimation.blazepose.utils.heatmap import find_keypoints_from_heatmap
 
 
 @tf.function
 def calc_mae(batch_keypoints_true, batch_keypoints_pred, keypoint_thresh=0.1):
-
-    mask = tf.greater(batch_keypoints_true[:, :, 2], keypoint_thresh)
-    tf.boolean_mask(batch_keypoints_true[:, :, 0], mask)
-    tf.boolean_mask(batch_keypoints_true[:, :, 1], mask)
-
-    mask = tf.greater(batch_keypoints_pred[:, :, 2], keypoint_thresh)
-    tf.boolean_mask(batch_keypoints_pred[:, :, 0], mask)
-    tf.boolean_mask(batch_keypoints_pred[:, :, 1], mask)
+    # mask = tf.greater(batch_keypoints_true[:, :, 2], keypoint_thresh)
+    # tf.boolean_mask(batch_keypoints_true[:, :, 0], mask)
+    # tf.boolean_mask(batch_keypoints_true[:, :, 1], mask)
+    #
+    # mask = tf.greater(batch_keypoints_pred[:, :, 2], keypoint_thresh)
+    # tf.boolean_mask(batch_keypoints_pred[:, :, 0], mask)
+    # tf.boolean_mask(batch_keypoints_pred[:, :, 1], mask)
 
     error = tf.abs(batch_keypoints_pred[:, :, :2] - batch_keypoints_true[:, :, :2])
     n_points = tf.cast(tf.reduce_prod(tf.shape(error)), tf.float32)
@@ -35,14 +33,15 @@ class MeanAverageErrorMetric(tf.keras.metrics.Metric):
 
     def update_state(self, y_true, y_pred, sample_weight=None):
         if len(tf.shape(y_true)) == 4:  # Heatmap
-            batch_keypoints_pred = find_keypoints_from_heatmap(y_pred, normalize=True)
-            batch_keypoints_true = find_keypoints_from_heatmap(y_true, normalize=True)
+            batch_keypoints_pred = find_keypoints_from_heatmap(y_pred, normalize=True)[..., :2]
+            batch_keypoints_true = find_keypoints_from_heatmap(y_true, normalize=True)[..., :2]
             keypoint_thresh = 0.1
         elif len(tf.shape(y_true)) == 3:  # Regression
+            # Calculate MAE only over UV dimension.
             batch_keypoints_pred = tf.reshape(
-                y_pred, (tf.shape(y_pred)[0], -1, 3))
+                y_pred[..., :2], (tf.shape(y_pred)[0], -1, 2))
             batch_keypoints_true = tf.reshape(
-                y_true, (tf.shape(y_true)[0], -1, 3))
+                y_true[..., :2], (tf.shape(y_true)[0], -1, 2))
             keypoint_thresh = 0.5
         else:
             raise ValueError('Error: Wrong MAE input shape.')
