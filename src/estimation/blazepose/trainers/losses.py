@@ -132,33 +132,6 @@ def get_huber_loss2(delta=1.0, weights=1.0):
     return huber_loss
 
 
-def get_huber_loss(delta=1.0, weights=(1.0, 100.0)):
-    '''
-    ' Huber loss.
-    ' https://jaromiru.com/2017/05/27/on-using-huber-loss-in-deep-q-learning/
-    ' https://en.wikipedia.org/wiki/Huber_loss
-    '''
-
-    def huber_loss(y_true, y_pred, clip_delta=delta, weights=weights):
-        error = y_true - y_pred
-        cond = tf.keras.backend.abs(error) < clip_delta
-        squared_loss = 0.5 * tf.keras.backend.square(error)
-        linear_loss = clip_delta * (tf.keras.backend.abs(error) - 0.5 * clip_delta)
-        total_loss = tf.where(cond, squared_loss, linear_loss)
-        weights = (y_true * weights[1]) + weights[0]
-        total_loss = total_loss * weights
-        return total_loss
-
-    '''
-    ' Same as above but returns the mean loss.
-    '''
-
-    def huber_loss_mean(y_true, y_pred, clip_delta=delta):
-        return tf.keras.backend.mean(huber_loss(y_true, y_pred, clip_delta))
-
-    return huber_loss
-
-
 def get_wing_loss(w=10.0, epsilon=2.0):
     """
     Arguments:
@@ -182,21 +155,37 @@ def get_wing_loss(w=10.0, epsilon=2.0):
             return loss
 
 
-class JointFeaturesLoss(tf.keras.losses.Loss):
+class AdjustedCoordsLoss(tf.keras.losses.Loss):
 
-    def __init__(self, coord_loss, presence_loss, weights):
+    def __init__(self, coord_loss):
         super().__init__()
         self.coord_loss = coord_loss
-        self.presence_loss = presence_loss
-        self.weights = weights
 
     def call(self, y_true, y_pred):
-        coords_loss_val = self.coord_loss(y_true[..., :3], y_pred[..., :3])
-        presence_loss_val = self.presence_loss(y_true[..., 3:4], y_pred[..., 3:4])
+        """Make sure that loss is computed only if the hand is present."""
+        presence = y_true[..., 3:4]
+        true_keypoints = y_true[..., :3] * presence
+        pred_keypoints = y_pred[..., :3] * presence
+        coords_loss_val = self.coord_loss(true_keypoints, pred_keypoints)
+        # coords_loss_val_mean = tf.reduce_mean(coords_loss_val, axis=-1)
+        return coords_loss_val
+
+
+class HeatmapLossDecorator(tf.keras.losses.Loss):
+
+    def __init__(self, loss, num_joints):
+        super().__init__()
+        self.loss = loss
+        self.num_joints = num_joints
+
+    def call(self, y_true, pred_heatmap):
+        """Make sure that loss is computed only if the hand is present."""
+        true_heatmap = y_true[..., :self.num_joints]
+        presence = y_true[..., self.num_joints:]
+
+        true_heatmap *= presence
+        pred_heatmap *= presence
+        coords_loss_val = self.loss(true_heatmap, pred_heatmap)
         # Compute coords loss if the joint is present
-        coords_loss_val *= y_true[..., 3:4]
-        coords_loss_val_mean = tf.reduce_mean(coords_loss_val, axis=-1)
-        return self.weights[0] * coords_loss_val_mean + self.weights[1] * presence_loss_val
-
-
-
+        # tf.print(tf.shape(coords_loss_val), tf.shape(true_heatmap), tf.shape(presence), tf.shape(pred_heatmap))
+        return coords_loss_val

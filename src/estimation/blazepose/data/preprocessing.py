@@ -64,6 +64,7 @@ def preprocess(image, joints, camera: Camera, heatmap_sigma: int, joints_type, c
     # Determine whether joints are located in the crop
     keypoints_z = extract_depth(image, keypoints_uv)
     joints_presence = get_joint_presence(cropped_image, cropped_uv, keypoints_z, min_z, max_z)
+    joints_presence = joints_presence[:, tf.newaxis]
 
     if crop_type != CropType.RANDOM:
         cropped_image, cropped_uv = rotate_image_and_joints(cropped_image, cropped_uv, random_angle_stddev)
@@ -71,13 +72,17 @@ def preprocess(image, joints, camera: Camera, heatmap_sigma: int, joints_type, c
     resized_image, resized_uv = resize_image_and_joints(cropped_image, cropped_uv, image_target_size, bbox)
     normalized_image, normalized_uvz = normalize_image_and_joints(
         resized_image, resized_uv, joints[..., 2:3], min_z, max_z)
-
+    normalized_uvzp = tf.concat([normalized_uvz, joints_presence], axis=-1)
     heatmaps = generate_heatmaps(resized_uv,
                                  orig_size=tf.shape(resized_image)[:2],
                                  target_size=[output_target_size, output_target_size],
                                  sigma=heatmap_sigma)
+    tiled_presence = tf.broadcast_to(joints_presence[tf.newaxis, tf.newaxis, :, 0], tf.shape(heatmaps))  # [64, 64, 21]
+    heatmaps = tf.concat([heatmaps, tiled_presence], axis=-1)  # [64, 64, 42]
 
-    return normalized_image, (normalized_uvz, heatmaps, joints_presence[:, tf.newaxis])
+    return normalized_image, {"joints": normalized_uvzp,
+                              "heatmap": heatmaps,
+                              "presence": joints_presence}
 
 
 def shift_point(point_xyz, stddev):
@@ -99,6 +104,21 @@ def extract_depth(image, keypoints_uv):
 
 
 def get_joint_presence(image, keypoints_vu, keypoints_z, min_z, max_z):
+    """
+    The joint is present if the joint is not outside of the image.
+
+    Parameters
+    ----------
+    image
+    keypoints_vu
+    keypoints_z
+    min_z
+    max_z
+
+    Returns
+    -------
+
+    """
     min_bounds = tf.concat([[0, 0], [min_z]], axis=-1)
     image_hw = tf.shape(image)[:2]
     max_bounds = tf.cast(tf.concat([image_hw, [max_z]], axis=-1), dtype=keypoints_vu.dtype)

@@ -33,8 +33,10 @@ def evaluate(config):
 
     for batch in ds.test_dataset:
         image, joints = batch[0][0], batch[1][0]
-        normalized_image, (joint_features, heatmaps) = prepare_fn(image, joints)
-        y_joints_batch, y_heatmap_batch = model.predict(normalized_image[tf.newaxis, ...])
+        normalized_image, y_true = prepare_fn(image, joints)
+        joint_features = y_true['joints'][..., :21]
+
+        y_joints_batch, y_heatmap_batch, y_presence_batch = model.predict(normalized_image[tf.newaxis, ...])
         y_joints = y_joints_batch[0]
         y_heatmap = y_heatmap_batch[0]
         plots.plot_image_with_skeleton(normalized_image, joint_features[:, :2] * 256)
@@ -43,7 +45,7 @@ def evaluate(config):
 
 
 if __name__ == "__main__":
-    config_path = SRC_DIR.joinpath('estimation/blazepose/configs/config_blazepose_regress.json')
+    config_path = SRC_DIR.joinpath('estimation/blazepose/configs/config_blazepose.json')
     with open(config_path, 'r') as f:
         config = json.load(f)
     evaluate(config)

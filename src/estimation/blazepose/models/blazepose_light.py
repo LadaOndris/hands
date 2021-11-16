@@ -161,11 +161,10 @@ class BlazePoseLight:
         # === Regression ===
 
         # Stop gradient for regression on 2-head model
-        if model_type == "TWOHEAD" or model_type == "REGRESSION":
-            x = tf.keras.backend.stop_gradient(x)
-            y2 = tf.keras.backend.stop_gradient(y2)
-            y3 = tf.keras.backend.stop_gradient(y3)
-            y4 = tf.keras.backend.stop_gradient(y4)
+        x = tf.keras.backend.stop_gradient(x)
+        y2 = tf.keras.backend.stop_gradient(y2)
+        y3 = tf.keras.backend.stop_gradient(y3)
+        y4 = tf.keras.backend.stop_gradient(y4)
 
         # In: [1, 64, 64, 64],  [1,  32, 32, 64]
         x = self.conv12a(x) + self.conv12b(y2)  # 32, 32, 64

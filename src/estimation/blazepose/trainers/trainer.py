@@ -10,21 +10,20 @@ from src.datasets.bighand.dataset import BighandDataset
 from src.estimation.blazepose.data.preprocessing import preprocess
 from src.estimation.blazepose.metrics.mae import MeanAverageErrorMetric
 from src.estimation.blazepose.models.ModelCreator import ModelCreator
-from src.estimation.blazepose.trainers.losses import euclidean_distance_loss, focal_loss, focal_tversky, get_huber_loss, \
-    get_wing_loss
-from src.estimation.blazepose.trainers.TrainPhase import TrainPhase
+from src.estimation.blazepose.trainers.losses import AdjustedCoordsLoss, euclidean_distance_loss, focal_loss, \
+    focal_tversky, get_wing_loss, HeatmapLossDecorator
 from src.utils.camera import CameraBighand
 from src.utils.paths import BIGHAND_DATASET_DIR, ROOT_DIR, SRC_DIR
 
 
-def get_loss_functions(config_losses):
+def get_loss_functions(config_losses, num_keypoints):
     weights = config_losses['weights']
     heatmap_loss = get_loss_by_name(config_losses['heatmap_loss'])
     coords_loss = get_loss_by_name(config_losses['keypoint_loss'])
     presence_loss = get_loss_by_name(config_losses['presence_loss'])
 
-    losses = {'heatmap': heatmap_loss,
-              'joints': coords_loss,
+    losses = {'heatmap': HeatmapLossDecorator(heatmap_loss, num_keypoints),
+              'joints': AdjustedCoordsLoss(coords_loss),
               'presence': presence_loss}
     return losses, weights
 
@@ -35,7 +34,7 @@ def get_loss_by_name(loss_name: str):
     elif loss_name == "focal_tversky":
         return focal_tversky
     elif loss_name == "huber":
-        return get_huber_loss(delta=1.0, weights=(1.0, 1.0))
+        return tf.keras.losses.Huber()
     elif loss_name == "focal":
         return focal_loss(gamma=2, alpha=0.25)
     elif loss_name == "wing_loss":
@@ -59,11 +58,11 @@ def load_model(config, weights):
         weights_path = ROOT_DIR.joinpath(train_config["pretrained_weights_path"])
         model.load_weights(weights_path, by_name=True, skip_mismatch=True)
 
-    train_phase = TrainPhase(train_config.get("train_phase", "UNKNOWN"))
-    if train_phase == train_phase.HEATMAP:
-        freeze_regression_layers(model)
-    elif train_phase == train_phase.REGRESSION:
-        freeze_heatmap_layers(model)
+    # train_phase = TrainPhase(train_config.get("train_phase", "UNKNOWN"))
+    # if train_phase == train_phase.HEATMAP:
+    #     freeze_regression_layers(model)
+    # elif train_phase == train_phase.REGRESSION:
+    #     freeze_heatmap_layers(model)
     return model
 
 
@@ -77,11 +76,11 @@ def train(config, batch_size, verbose, weights=None):
 
     model_config = config['model']
     train_config = config["train"]
-    losses, weights = get_loss_functions(train_config["losses"])
+    losses, weights = get_loss_functions(train_config["losses"], model_config['num_keypoints'])
 
     camera = CameraBighand()
-    hm_mae_metric = MeanAverageErrorMetric(name="mae1")
-    kp_mae_metric = MeanAverageErrorMetric(name="mae2")
+    hm_mae_metric = MeanAverageErrorMetric(name="mae1", num_keypoints=model_config['num_keypoints'])
+    kp_mae_metric = MeanAverageErrorMetric(name="mae2", num_keypoints=model_config['num_keypoints'])
     # kp_mje_metric = MeanJointErrorMetric(camera)
 
     monitor_loss = 'val_loss'

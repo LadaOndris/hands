@@ -1,5 +1,5 @@
 {
-    "experiment_name":                  "blazepose_regress_huber",
+    "experiment_name":                  "blazepose_twohead",
     "trainer":                          "blazepose_trainer",
     "model": {
         "im_width": 256,
@@ -13,7 +13,7 @@
         "model_type": "LIGHT_SIGMOID_HEATMAP_LINEAR_REGRESS_TWOHEAD"
     },
     "train": {
-        "train_phase": "REGRESSION",
+        "train_phase": "TWOHEAD",
         "generate_random_crop_prob": 0.1,
         "random_angle_stddev": 0.392,
         "shift_stddev": 0.05,
@@ -21,18 +21,18 @@
             "heatmap_loss": "binary_crossentropy",
             "keypoint_loss": "huber",
             "presence_loss": "binary_crossentropy",
-            "weights": {"heatmap": 0.0, "joints": 0.9, "presence": 0.1 }
+            "weights": {"heatmap": 0.39, "joints": 0.59, "presence": 0.02 }
         },
         "nb_epochs": 1000,
         "learning_rate": 0.0005,
         "learning_decay_rate": 0.945,
-        "load_weights": true,
+        "load_weights": false,
         "pretrained_weights_path": "logs/20211103-011843/train_ckpts/weights.40.h5",
         "initial_epoch": 0
     },
     "test": {
         "pck_ref_points_idxs" :         [8, 9],
         "pck_thresh":                   0.5,
-        "weights_path": "logs/20211103-014745/train_ckpts/weights.40.h5"
+        "weights_path": "logs/20211114-185439_TWOHEAD/train_ckpts/weights.25.h5"
     }
 }

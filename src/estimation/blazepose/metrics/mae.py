@@ -22,8 +22,9 @@ def calc_mae(batch_keypoints_true, batch_keypoints_pred, keypoint_thresh=0.1):
 
 class MeanAverageErrorMetric(tf.keras.metrics.Metric):
 
-    def __init__(self, name='mae', **kwargs):
+    def __init__(self, num_keypoints, name='mae', **kwargs):
         super(MeanAverageErrorMetric, self).__init__(name=name, **kwargs)
+        self.num_keypoints = num_keypoints
         self.total_error = self.add_weight(name='total_error', initializer='zeros')
         self.n_total = self.add_weight(name='n_total', initializer='zeros')
 
@@ -33,8 +34,8 @@ class MeanAverageErrorMetric(tf.keras.metrics.Metric):
 
     def update_state(self, y_true, y_pred, sample_weight=None):
         if len(tf.shape(y_true)) == 4:  # Heatmap
-            batch_keypoints_pred = find_keypoints_from_heatmap(y_pred, normalize=True)[..., :2]
-            batch_keypoints_true = find_keypoints_from_heatmap(y_true, normalize=True)[..., :2]
+            batch_keypoints_pred = find_keypoints_from_heatmap(y_pred[..., :self.num_keypoints], normalize=True)[..., :2]
+            batch_keypoints_true = find_keypoints_from_heatmap(y_true[..., :self.num_keypoints], normalize=True)[..., :2]
             keypoint_thresh = 0.1
         elif len(tf.shape(y_true)) == 3:  # Regression
             # Calculate MAE only over UV dimension.
