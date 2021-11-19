@@ -7,8 +7,7 @@ from src.estimation.jgrp2o.configuration import Config
 from src.estimation.jgrp2o.preprocessing_com import ComPreprocessor
 from src.utils.camera import Camera
 from src.utils.debugging import timing
-from src.utils.imaging import resize_bilinear_nearest_batch, resize_images
-from src.utils.imaging import normalize_image_depth
+from src.utils.imaging import normalize_image_depth, resize_bilinear_nearest_batch, resize_images
 
 
 def rotate(images, uv_joints, image_center):
@@ -208,9 +207,9 @@ def normalize_coords(joints_uv, joints_z, bcubes, image_size):
 def offset_coord(joints_single_coord, n_joints, image_size):
     x = tf.linspace(0, 1, num=image_size)  # [0, 1]
     x = tf.cast(x, tf.float32)
-    x = x[tf.newaxis, :, tf.newaxis]  # shape = [1, out_size, 1]
-    x = tf.tile(x, [1, 1, n_joints])  # shape = [1, out_size, n_joints]
-    x -= tf.expand_dims(joints_single_coord, 1)  # [0 - u, 1 - u], shape = [None, out_size, n_joints]
+    x = x[:, tf.newaxis]  # shape = [out_size, 1]
+    x = tf.tile(x, [1, n_joints])  # shape = [out_size, n_joints]
+    x -= joints_single_coord  # [0 - u, 1 - u], shape = [ out_size, n_joints]
     x *= -1  # [u, u - 1]
     return x
 
@@ -232,15 +231,7 @@ def compute_offsets(images, joints, image_out_size):
     -------
         tf.Tensor of shape [None, out_size, out_size, n_joints, 3]
     """
-    n_joints = joints.shape[1]
-    x = offset_coord(joints[..., 0], n_joints, image_out_size)  # shape = [None, out_size, n_joints]
-    y = offset_coord(joints[..., 1], n_joints, image_out_size)  # shape = [None, out_size, n_joints]
-
-    u_offsets = x[:, tf.newaxis, :, :]
-    u_offsets = tf.tile(u_offsets, [1, image_out_size, 1, 1])
-
-    v_offsets = y[:, :, tf.newaxis, :]
-    v_offsets = tf.tile(v_offsets, [1, 1, image_out_size, 1])
+    u_offsets, v_offsets = get_uv_offsets_batch(joints, image_out_size)
 
     # z_im = tf.image.resize(images, [self.image_out_size, self.image_out_size],
     #                        method=tf.image.ResizeMethod.BILINEAR)
@@ -250,6 +241,34 @@ def compute_offsets(images, joints, image_out_size):
     z_coords = z_coords[:, tf.newaxis, tf.newaxis, :]
     z_offsets = z_coords - z_im
     return tf.stack([u_offsets, v_offsets, z_offsets], axis=-1)
+
+
+def get_uv_offsets_batch(joints, offsets_size):
+    n_joints = joints.shape[1]
+    print(joints)
+    x = offset_coord(joints[..., 0], n_joints, offsets_size)  # shape = [None, out_size, n_joints]
+    y = offset_coord(joints[..., 1], n_joints, offsets_size)  # shape = [None, out_size, n_joints]
+
+    u_offsets = x[:, tf.newaxis, :, :]
+    u_offsets = tf.tile(u_offsets, [1, offsets_size, 1, 1])
+
+    v_offsets = y[:, :, tf.newaxis, :]
+    v_offsets = tf.tile(v_offsets, [1, 1, offsets_size, 1])
+    return u_offsets, v_offsets
+
+
+def get_uv_offsets(joints, offsets_size):
+    n_joints = joints.shape[0]
+    print(joints)
+    x = offset_coord(joints[..., 0], n_joints, offsets_size)  # shape = [None, out_size, n_joints]
+    y = offset_coord(joints[..., 1], n_joints, offsets_size)  # shape = [None, out_size, n_joints]
+
+    u_offsets = x[tf.newaxis, :, :]
+    u_offsets = tf.tile(u_offsets, [offsets_size, 1, 1])
+
+    v_offsets = y[:, tf.newaxis, :]
+    v_offsets = tf.tile(v_offsets, [1, offsets_size, 1])
+    return u_offsets, v_offsets
 
 
 def convert_coords_to_local(uvz_coords, bboxes):
@@ -369,7 +388,7 @@ class DatasetPreprocessor:
         bboxes = extract_bboxes(uv_global)
         bboxes = square_bboxes(bboxes, tf.shape(images)[1:3])
         bcubes = self.com_preprocessor.refine_bcube_using_com(images, bboxes,
-                                                                        cube_size=self.cube_size)
+                                                              cube_size=self.cube_size)
         if self.augment:
             # Translate 3D - move bcubes
             bcubes = bcubes_translate3d(bcubes, stddev=8)

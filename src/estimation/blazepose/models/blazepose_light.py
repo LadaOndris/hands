@@ -68,13 +68,15 @@ class BlazePoseLight:
                 filters=filters[1], kernel_size=1, activation="relu")
         ])
 
+        # Probability heatmaps, depth offsets, u offsets, v offsets
+        num_heatmaps = self.num_keypoints * 4
         self.conv11 = tf.keras.models.Sequential([
             tf.keras.layers.DepthwiseConv2D(
                 kernel_size=3, padding="same", activation=None),
             tf.keras.layers.Conv2D(
                 filters=filters[1], kernel_size=1, activation="relu"),
             tf.keras.layers.Conv2D(
-                filters=self.num_keypoints, kernel_size=3, padding="same", activation=None)  # -> Heatmap output
+                filters=num_heatmaps, kernel_size=3, padding="same", activation=None)  # -> Heatmap output
         ])
 
         # === Regression ===

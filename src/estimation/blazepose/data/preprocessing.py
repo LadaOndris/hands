@@ -5,7 +5,7 @@ import tensorflow_addons as tfa
 from src.datasets.bighand.dataset import BIGHAND_DATASET_DIR, BighandDataset
 from src.estimation.blazepose.data.crop import CropType, get_crop_center_point, get_crop_type
 from src.estimation.blazepose.data.rotate import rotate_tensor, rotation_angle_from_21_keypoints
-from src.estimation.jgrp2o.preprocessing import get_resize_coeffs, resize_coords
+from src.estimation.jgrp2o.preprocessing import get_resize_coeffs, get_uv_offsets, get_uv_offsets_batch, resize_coords
 from src.estimation.jgrp2o.preprocessing_com import ComPreprocessor, crop_to_bcube
 from src.utils.camera import Camera, CameraBighand
 from src.utils.imaging import normalize_to_range, resize_bilinear_nearest
@@ -71,14 +71,21 @@ def preprocess(image, joints, camera: Camera, heatmap_sigma: int, joints_type, c
 
     resized_image, resized_uv = resize_image_and_joints(cropped_image, cropped_uv, image_target_size, bbox)
     normalized_image, normalized_uvz = normalize_image_and_joints(
-        resized_image, resized_uv, joints[..., 2:3], min_z, max_z)
-    normalized_uvzp = tf.concat([normalized_uvz, joints_presence], axis=-1)
+        resized_image, resized_uv, joints[:, 2:3], min_z, max_z)
+
+    # Subtract the depth of the palm joint
+    normalized_relative_z = normalized_uvz[:, 2:3] - normalized_uvz[0, 2:3]
+    normalized_uvzp = tf.concat([normalized_uvz[:, :2], normalized_relative_z, joints_presence], axis=-1)
     heatmaps = generate_heatmaps(resized_uv,
                                  orig_size=tf.shape(resized_image)[:2],
                                  target_size=[output_target_size, output_target_size],
                                  sigma=heatmap_sigma)
     tiled_presence = tf.broadcast_to(joints_presence[tf.newaxis, tf.newaxis, :, 0], tf.shape(heatmaps))  # [64, 64, 21]
-    heatmaps = tf.concat([heatmaps, tiled_presence], axis=-1)  # [64, 64, 42]
+
+    u_offsets, v_offsets = get_uv_offsets(normalized_uvz, output_target_size)
+    z_offsets = tf.broadcast_to(normalized_relative_z[tf.newaxis, tf.newaxis, :, 0], tf.shape(heatmaps))
+
+    heatmaps = tf.concat([heatmaps, u_offsets, v_offsets, z_offsets, tiled_presence], axis=-1)  # [64, 64, 42]
 
     return normalized_image, {"joints": normalized_uvzp,
                               "heatmap": heatmaps,

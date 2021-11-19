@@ -19,10 +19,11 @@ from src.utils.paths import BIGHAND_DATASET_DIR, ROOT_DIR, SRC_DIR
 def get_loss_functions(config_losses, num_keypoints):
     weights = config_losses['weights']
     heatmap_loss = get_loss_by_name(config_losses['heatmap_loss'])
+    offsets_loss = get_loss_by_name(config_losses['offsets_loss'])
     coords_loss = get_loss_by_name(config_losses['keypoint_loss'])
     presence_loss = get_loss_by_name(config_losses['presence_loss'])
 
-    losses = {'heatmap': HeatmapLossDecorator(heatmap_loss, num_keypoints),
+    losses = {'heatmap': HeatmapLossDecorator(heatmap_loss, offsets_loss, num_keypoints),
               'joints': AdjustedCoordsLoss(coords_loss),
               'presence': presence_loss}
     return losses, weights

@@ -173,19 +173,28 @@ class AdjustedCoordsLoss(tf.keras.losses.Loss):
 
 class HeatmapLossDecorator(tf.keras.losses.Loss):
 
-    def __init__(self, loss, num_joints):
+    def __init__(self, heatmap_loss, offsets_loss, num_joints):
         super().__init__()
-        self.loss = loss
+        self.heatmap_loss = heatmap_loss
+        self.offsets_loss = offsets_loss
         self.num_joints = num_joints
 
-    def call(self, y_true, pred_heatmap):
+    def call(self, y_true, pred_heatmaps_and_offsets):
         """Make sure that loss is computed only if the hand is present."""
-        true_heatmap = y_true[..., :self.num_joints]
-        presence = y_true[..., self.num_joints:]
+        true_heatmaps_and_offsets = y_true[..., :-1]
+        presence = y_true[..., -1:]
 
-        true_heatmap *= presence
-        pred_heatmap *= presence
-        coords_loss_val = self.loss(true_heatmap, pred_heatmap)
+        true_heatmaps_and_offsets *= presence
+        pred_heatmaps_and_offsets *= presence
+
+        true_heatmap = true_heatmaps_and_offsets[..., :self.num_joints]
+        pred_heatmap = pred_heatmaps_and_offsets[..., :self.num_joints]
+        heatmaps_loss_val = self.heatmap_loss(true_heatmap, pred_heatmap)
+
+        true_offsets = true_heatmaps_and_offsets[..., self.num_joints:4 * self.num_joints]
+        pred_offsets = pred_heatmaps_and_offsets[..., self.num_joints:4 * self.num_joints]
+        offsets_loss_val = self.offsets_loss(true_offsets, pred_offsets)
+
         # Compute coords loss if the joint is present
         # tf.print(tf.shape(coords_loss_val), tf.shape(true_heatmap), tf.shape(presence), tf.shape(pred_heatmap))
-        return coords_loss_val
+        return heatmaps_loss_val + offsets_loss_val

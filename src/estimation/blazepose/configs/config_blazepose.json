@@ -19,6 +19,7 @@
         "shift_stddev": 0.05,
         "losses": {
             "heatmap_loss": "binary_crossentropy",
+            "offsets_loss": "huber",
             "keypoint_loss": "huber",
             "presence_loss": "binary_crossentropy",
             "weights": {"heatmap": 0.39, "joints": 0.59, "presence": 0.02 }
@@ -33,6 +34,6 @@
     "test": {
         "pck_ref_points_idxs" :         [8, 9],
         "pck_thresh":                   0.5,
-        "weights_path": "logs/20211114-185439_TWOHEAD/train_ckpts/weights.25.h5"
+        "weights_path": "logs/20211117-140100_TWOHEAD/train_ckpts/weights.40.h5"
     }
 }
