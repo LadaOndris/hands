@@ -34,13 +34,13 @@ def evaluate(config):
     for batch in ds.test_dataset:
         image, joints = batch[0][0], batch[1][0]
         normalized_image, y_true = prepare_fn(image, joints)
-        joint_features = y_true['joints'][..., :21]
+        true_joints = y_true['joints'][..., :21]
 
-        y_joints_batch, y_heatmap_batch, y_presence_batch = model.predict(normalized_image[tf.newaxis, ...])
-        y_joints = y_joints_batch[0]
-        y_heatmap = y_heatmap_batch[0]
-        plots.plot_image_with_skeleton(normalized_image, joint_features[:, :2] * 256)
-        plots.plot_image_with_skeleton(normalized_image, y_joints[:, :2] * 256)
+        pred_joints_batch, pred_heatmap_batch, pred_presence_batch = model.predict(normalized_image[tf.newaxis, ...])
+        pred_joints = pred_joints_batch[0]
+        pred_heatmap = pred_heatmap_batch[0]
+        # plots.plot_image_with_skeleton(normalized_image, true_joints[:, :2] * 256)
+        plots.plot_image_with_skeleton(normalized_image, pred_joints[:, :2] * 256)
         pass
 
 
