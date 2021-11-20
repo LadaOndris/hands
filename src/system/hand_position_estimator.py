@@ -3,7 +3,7 @@ import tensorflow as tf
 import src.detection.plots
 import src.utils.imaging
 import src.utils.plots as plots
-from src.detection.detector import BlazefaceDetector, YoloDetector
+from system.components.detector import BlazehandDetector, YoloDetector
 from src.estimation.jgrp2o.architecture.jgrp2o import JGR_J2O
 from src.estimation.jgrp2o.configuration import Config
 from src.estimation.jgrp2o.preprocessing import convert_coords_to_local, DatasetPreprocessor
@@ -34,7 +34,7 @@ class HandPositionEstimator:
         self.resized_image = None
         self.resize_mode = 'crop'
         if detector == 'blazeface':
-            self.detector = BlazefaceDetector(num_detections=1)
+            self.detector = BlazehandDetector(num_detections=1)
         elif detector == 'yolo':
             self.detector = YoloDetector(batch_size=1, resize_mode=self.resize_mode, num_detections=1)
         else:

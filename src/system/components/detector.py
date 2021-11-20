@@ -10,35 +10,12 @@ from src.utils import bbox_utils
 from src.utils.config import TEST_YOLO_CONF_THRESHOLD
 from src.utils.debugging import timing
 from src.utils.paths import LOGS_DIR, SAVED_MODELS_DIR
+from system.components.base import Detector
 
 
-class Detector(ABC):
+class BlazehandDetector(Detector):
 
-    def __init__(self, num_detections):
-        self.num_detections = num_detections
-
-    @property
-    @abstractmethod
-    def input_shape(self):
-        pass
-
-    @abstractmethod
-    def detect(self, images):
-        pass
-
-    @abstractmethod
-    def preprocess(self, images):
-        pass
-
-    @abstractmethod
-    def postprocess(self, model_output):
-        pass
-
-
-class BlazefaceDetector(Detector):
-
-    def __init__(self, num_detections):
-        super().__init__(num_detections)
+    def __init__(self):
         self.channels = 1
         self.hyper_params = train_utils.get_hyper_params()
         self.model = build_blaze_face(self.hyper_params['detections_per_layer'], channels=self.channels)
@@ -51,7 +28,6 @@ class BlazefaceDetector(Detector):
     def input_shape(self):
         return [self.hyper_params['img_size'], self.hyper_params['img_size'], self.channels]
 
-    @timing
     @tf.function
     def detect(self, images):
         deltas_and_scores = self.model(images)
@@ -61,7 +37,6 @@ class BlazefaceDetector(Detector):
     def preprocess(self, images):
         pass
 
-    @timing
     def postprocess(self, model_output):
         pred_deltas, pred_scores = model_output
 
@@ -86,11 +61,10 @@ class BlazefaceDetector(Detector):
 class YoloDetector(Detector):
 
     def __init__(self, batch_size, resize_mode, num_detections):
-        super().__init__(num_detections)
+        self.num_detections = num_detections
         self.batch_size = batch_size
         self.model = YoloLoader.load_from_weights(resize_mode, batch_size=1)
 
-    @timing
     @tf.function
     def detect(self, images, num_detections=1):
         """
@@ -132,7 +106,6 @@ class YoloDetector(Detector):
         images = tf.image.convert_image_dtype(images, dtype=tf.uint8)
         return images
 
-    @timing
     def postprocess(self, model_output):
         boxes, scores, nums = utils.boxes_from_yolo_outputs(model_output,
                                                             self.model.batch_size,
@@ -148,7 +121,7 @@ class YoloDetector(Detector):
 
 
 if __name__ == "__main__":
-    detector = BlazefaceDetector(num_detections=1)
+    detector = BlazehandDetector()
     ret = detector.model(tf.zeros([1, 256, 256, 1]))
     print(ret)
     detector.save_model(SAVED_MODELS_DIR.joinpath('blazeface_handseg.tf'))
