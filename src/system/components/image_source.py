@@ -2,7 +2,8 @@ import numpy as np
 import pyrealsense2 as rs
 
 from src.utils.live import get_depth_unit
-from system.components.base import ImageSource
+from src.system.components.base import ImageSource
+from src.utils.imaging import crop_to_equal_dims
 
 
 class LiveRealSenseImageSource(ImageSource):
@@ -35,6 +36,7 @@ class LiveRealSenseImageSource(ImageSource):
         depth_image[depth_image > self.max_depth] = 0
         # Convert float64 back to uint16.
         depth_image = depth_image.astype(np.uint16)
+        depth_image = crop_to_equal_dims(depth_image)
         return depth_image
 
     def __del__(self):

@@ -39,25 +39,38 @@ def tf_resize_image(depth_image, shape, resize_mode: str):
     if resize_mode == RESIZE_MODE_PAD:
         depth_image = tf.image.resize_with_pad(depth_image, shape[0], shape[1])
     elif resize_mode == RESIZE_MODE_CROP:
-        height, width, channels = depth_image.shape
-        if height > width:
-            offset = tf.cast((height - width) / 2, tf.int32)
-            cropped = depth_image[offset:height - offset, :, :]
-        elif width > height:
-            offset = tf.cast((width - height) / 2, tf.int32)
-            cropped = depth_image[:, offset:width - offset, :]
-        else:
-            cropped = depth_image
+        cropped = crop_to_equal_dims(depth_image)
         depth_image = resize_bilinear_nearest(cropped, shape)
-        # depth_image = depth_image[tf.newaxis, ...]
-        # depth_image = tf.image.crop_and_resize(depth_image, [[0, 80 / 640.0, 480 / 480.0, 560 / 640.0]],
-        #                                        [0], shape)
-        # depth_image = depth_image[0]
     else:
         raise ValueError(F"Unknown resize mode: {resize_mode}")
     # depth_image = tf.where(depth_image > 2000, 0, depth_image)
     depth_image = tf.cast(depth_image, dtype=type)
     return depth_image
+
+
+def crop_to_equal_dims(image):
+    """
+    Crops to image to create a square image from a rectangular one.
+    The areas on the side are cropped and the middle is returned.
+    For example,  crops [640, 480, 1] to [480, 480, 1].
+
+    Parameters
+    ----------
+    image  An image of arbitrary shape and channels.
+
+    Returns
+    -------
+    A square image
+    """
+    height, width, channels = image.shape
+    if height > width:
+        offset = tf.cast((height - width) / 2, tf.int32)
+        return image[offset:height - offset, :, :]
+    elif width > height:
+        offset = tf.cast((width - height) / 2, tf.int32)
+        return image[:, offset:width - offset, :]
+    else:
+        return image
 
 
 def resize_bilinear_nearest(image_in, shape):

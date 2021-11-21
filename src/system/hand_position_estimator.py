@@ -34,7 +34,7 @@ class HandPositionEstimator:
         self.resized_image = None
         self.resize_mode = 'crop'
         if detector == 'blazeface':
-            self.detector = BlazehandDetector(num_detections=1)
+            self.detector = BlazehandDetector()
         elif detector == 'yolo':
             self.detector = YoloDetector(batch_size=1, resize_mode=self.resize_mode, num_detections=1)
         else:

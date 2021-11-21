@@ -34,6 +34,8 @@ class HandTracker:
             # Detect when there no hand being tracked
             if keypoints is None:
                 rectangle = self.detector.detect(image)
+                self.display.update(image, None, rectangle)  # TODO: remove this line
+                rectangle = None  # TODO: remove this line
 
             # Estimate keypoints if there a hand detected
             if rectangle is not None:
@@ -59,4 +61,3 @@ if __name__ == "__main__":
                           keypoints_to_rectangle=KeypointsToRectangleImpl(),
                           display=OpencvDisplay())
     tracker.track()
-

@@ -267,6 +267,8 @@ def denormalize_bboxes(bboxes, height, width):
     outputs:
         denormalized_bboxes = (M, N, [y1, x1, y2, x2])
     """
+    height = tf.cast(height, tf.float32)
+    width = tf.cast(width, tf.float32)
     y1 = bboxes[..., 0] * height
     x1 = bboxes[..., 1] * width
     y2 = bboxes[..., 2] * height

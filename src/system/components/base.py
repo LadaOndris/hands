@@ -19,14 +19,6 @@ class Detector(ABC):
     def detect(self, image):
         pass
 
-    @abstractmethod
-    def preprocess(self, image):
-        pass
-
-    @abstractmethod
-    def postprocess(self, model_output):
-        pass
-
 
 class Estimator(ABC):
 

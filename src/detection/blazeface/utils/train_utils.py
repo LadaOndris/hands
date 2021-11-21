@@ -11,7 +11,7 @@ def get_hyper_params(**kwargs):
         hyper_params = dictionary
     """
     hyper_params = {
-        "batch_size": 16,
+        "batch_size": 32,
         "learning_rate": 0.001,
         "learning_decay_rate": 0.97,
         "img_size": 256,
@@ -30,6 +30,7 @@ def get_hyper_params(**kwargs):
 
 
 def prepare_expected_output_fn(prior_boxes, hyper_params):
+    @tf.function
     def _prepare_output(image, boxes):
         # Add batch dimension
         boxes = tf.expand_dims(boxes, axis=0)
@@ -40,7 +41,6 @@ def prepare_expected_output_fn(prior_boxes, hyper_params):
         labels = tf.squeeze(labels, axis=0)
         return image, (deltas, labels)
     return _prepare_output
-
 
 def calculate_expected_outputs(prior_boxes, gt_boxes, hyper_params):
     """Calculate ssd actual output values.
@@ -62,7 +62,7 @@ def calculate_expected_outputs(prior_boxes, gt_boxes, hyper_params):
     total_bboxes = tf.shape(prior_boxes)[0]
     batch_size = tf.shape(gt_boxes)[0]
     gt_box_size = tf.shape(gt_boxes)[1]
-    if gt_box_size == 0:
+    if tf.equal(gt_box_size, 0):
         deltas = tf.zeros(shape=[batch_size, total_bboxes, 4])
         labels = tf.zeros(shape=[batch_size, total_bboxes, 1])
         return deltas, labels
