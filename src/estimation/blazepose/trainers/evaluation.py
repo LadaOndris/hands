@@ -3,7 +3,7 @@ import json
 import tensorflow as tf
 
 import src.utils.plots as plots
-from estimation.blazepose.models.ModelCreator import ModelCreator
+from src.estimation.blazepose.models.ModelCreator import ModelCreator
 from src.datasets.bighand.dataset import BighandDataset
 from src.estimation.blazepose.data.preprocessing import preprocess
 from src.utils.camera import CameraBighand

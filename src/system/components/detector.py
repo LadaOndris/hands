@@ -8,7 +8,7 @@ from src.utils import bbox_utils
 from src.utils.config import TEST_YOLO_CONF_THRESHOLD
 from src.utils.imaging import resize_bilinear_nearest, RESIZE_MODE_CROP, tf_resize_image
 from src.utils.paths import LOGS_DIR, SAVED_MODELS_DIR
-from system.components.base import Detector
+from src.system.components.base import Detector
 
 
 class BlazehandDetector(Detector):

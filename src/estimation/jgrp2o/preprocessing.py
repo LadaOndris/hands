@@ -52,7 +52,7 @@ def square_bboxes(bboxes, image_size):
     return tf.stack([u_min, v_min, u_max, v_max], axis=-1)
 
 
-def extract_bboxes(uv_coords):
+def extract_bboxes(uv_coords, shift_coeff=0.2):
     """
     Parameters
     ----------
@@ -74,7 +74,6 @@ def extract_bboxes(uv_coords):
     v_min, v_max = tf.reduce_min(v, axis=1), tf.reduce_max(v, axis=1)
 
     # Move min and max to make the bbox slighty larger
-    shift_coeff = 0.2
     width = u_max - u_min
     height = v_max - v_min
     u_shift = width * shift_coeff

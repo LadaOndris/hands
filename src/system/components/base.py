@@ -37,5 +37,5 @@ class KeypointsToRectangle(ABC):
 class Display(ABC):
 
     @abstractmethod
-    def update(self, keypoints, image):
+    def update(self, image, keypoints, bounding_boxes):
         pass

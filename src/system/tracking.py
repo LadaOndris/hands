@@ -1,5 +1,8 @@
 import argparse
 
+import tensorflow as tf
+
+from src.utils.camera import CameraBighand
 from system.components.base import Detector, Display, Estimator, ImageSource, KeypointsToRectangle
 from system.components.detector import BlazehandDetector
 from system.components.display import OpencvDisplay
@@ -30,25 +33,27 @@ class HandTracker:
         while True:
             # Capture image to process next
             image = self.image_source.next_image()
+            image = tf.convert_to_tensor(image)
 
             # Detect when there no hand being tracked
             if keypoints is None:
-                rectangle = self.detector.detect(image)
-                self.display.update(image, None, rectangle)  # TODO: remove this line
-                rectangle = None  # TODO: remove this line
+                rectangle = self.detector.detect(image)[0]  # rectangle's max values are [480, 480] (orig image size)
 
             # Estimate keypoints if there a hand detected
-            if rectangle is not None:
-                reject_hand_flag, keypoints = self.estimator.estimate(image, rectangle)
+            if not tf.experimental.numpy.allclose(rectangle, 0):
+                hand_presence_flag, keypoints, normalized_image = self.estimator.estimate(image, rectangle)
 
-                # Reject if the hand is not present
-                if reject_hand_flag:
-                    keypoints = None
                 # Display the predicted keypoints and prepare for the next frame
-                else:
-                    self.display.update(image, keypoints)
-                    keypoints = keypoints
+                if hand_presence_flag:
+                    # self.display.update(image, keypoints)
+                    print("Updating window.")
                     rectangle = self.keypoints_to_rectangle.convert(keypoints)
+                    # self.display.update(normalized_image.numpy())
+                    self.display.update(image.numpy(), keypoints=keypoints, bounding_boxes=rectangle[tf.newaxis, ...].numpy())
+                # Reject if the hand is not present
+                else:
+                    print("Hand was lost.")
+                    keypoints = None
 
 
 if __name__ == "__main__":
@@ -57,7 +62,7 @@ if __name__ == "__main__":
 
     tracker = HandTracker(image_source=LiveRealSenseImageSource(),
                           detector=BlazehandDetector(),
-                          estimator=BlazeposeEstimator(),
+                          estimator=BlazeposeEstimator(CameraBighand()),
                           keypoints_to_rectangle=KeypointsToRectangleImpl(),
                           display=OpencvDisplay())
     tracker.track()
