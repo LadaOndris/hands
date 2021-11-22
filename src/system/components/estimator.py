@@ -2,8 +2,8 @@ import json
 
 import tensorflow as tf
 
-from estimation.blazepose.data.preprocessing import cube_to_box
-from estimation.jgrp2o.preprocessing import get_resize_coeffs
+from src.estimation.blazepose.data.preprocessing import cube_to_box
+from src.estimation.jgrp2o.preprocessing import get_resize_coeffs
 from src.estimation.blazepose.models.ModelCreator import ModelCreator
 from src.estimation.jgrp2o.preprocessing_com import ComPreprocessor, crop_to_bcube, crop_to_bounding_box
 from src.system.components.base import Estimator
@@ -31,11 +31,12 @@ class BlazeposeEstimator(Estimator):
         self.model.load_weights(weights_path)
         self.com_preprocessor = ComPreprocessor(camera, thresholding=False)
 
+    @tf.function
     def estimate(self, image, rectangle):
         # original image has shape [480, 480, 1]
         normalized_images_batch, crop_offset_uv = self.preprocess(image, rectangle)
         # normalized image has shape [255, 255, 1]
-        pred_joints_batch, pred_heatmap_batch, pred_presence_batch = self.model.predict(normalized_images_batch)
+        pred_joints_batch, pred_heatmap_batch, pred_presence_batch = self.model(normalized_images_batch)
         pred_joints_uvz = pred_joints_batch[0]  # coordinates are in range [0, 1]
         pred_heatmap = pred_heatmap_batch[0]  # heatmap values are in range [0, 1]
         pred_presence = pred_presence_batch[0]  # presence are probabilities for each joint in range [0, 1]

@@ -6,8 +6,8 @@ from pathlib import Path
 import numpy as np
 import tensorflow as tf
 import os
-from dataset import HandsegDataset
-from dataset_bboxes import HandsegDatasetBboxes
+from src.dataset import HandsegDataset
+from src.dataset_bboxes import HandsegDatasetBboxes
 from src.utils.paths import HANDSEG_DATASET_DIR
 
 dirname = os.path.dirname(__file__)

@@ -1,4 +1,4 @@
-from dataset_bboxes import SimpleBoxesDataset
+from src.dataset_bboxes import SimpleBoxesDataset
 from src.datasets.handseg.analysis import draw_bounding_box, show_images_with_bboxes
 
 

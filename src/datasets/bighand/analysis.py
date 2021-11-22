@@ -2,7 +2,7 @@ import json
 
 import tensorflow as tf
 
-from estimation.blazepose.models.ModelCreator import ModelCreator
+from src.estimation.blazepose.models.ModelCreator import ModelCreator
 from src.datasets.bighand.dataset import BighandDataset
 from src.utils.camera import CameraBighand
 from src.utils.paths import BIGHAND_DATASET_DIR, SRC_DIR

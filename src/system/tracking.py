@@ -1,14 +1,15 @@
 import argparse
+import time
 
 import tensorflow as tf
 
 from src.utils.camera import CameraBighand
-from system.components.base import Detector, Display, Estimator, ImageSource, KeypointsToRectangle
-from system.components.detector import BlazehandDetector
-from system.components.display import OpencvDisplay
-from system.components.estimator import BlazeposeEstimator
-from system.components.image_source import LiveRealSenseImageSource
-from system.components.keypoints_to_rectangle import KeypointsToRectangleImpl
+from src.system.components.base import Detector, Display, Estimator, ImageSource, KeypointsToRectangle
+from src.system.components.detector import BlazehandDetector
+from src.system.components.display import OpencvDisplay
+from src.system.components.estimator import BlazeposeEstimator
+from src.system.components.image_source import LiveRealSenseImageSource
+from src.system.components.keypoints_to_rectangle import KeypointsToRectangleImpl
 
 
 class HandTracker:
@@ -32,11 +33,14 @@ class HandTracker:
 
         while True:
             # Capture image to process next
+            start_time = time.time()
+
             image = self.image_source.next_image()
             image = tf.convert_to_tensor(image)
 
             # Detect when there no hand being tracked
             if keypoints is None:
+                print("Detecting hand.")
                 rectangle = self.detector.detect(image)[0]  # rectangle's max values are [480, 480] (orig image size)
 
             # Estimate keypoints if there a hand detected
@@ -49,11 +53,13 @@ class HandTracker:
                     print("Updating window.")
                     rectangle = self.keypoints_to_rectangle.convert(keypoints)
                     # self.display.update(normalized_image.numpy())
-                    self.display.update(image.numpy(), keypoints=keypoints, bounding_boxes=rectangle[tf.newaxis, ...].numpy())
+                    self.display.update(image.numpy(), keypoints=keypoints)
                 # Reject if the hand is not present
                 else:
                     print("Hand was lost.")
                     keypoints = None
+
+            print("Elapsed time [ms]: {:.0f}".format((time.time() - start_time) * 1000))
 
 
 if __name__ == "__main__":
