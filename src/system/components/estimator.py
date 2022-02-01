@@ -1,6 +1,8 @@
 import json
 
+import numpy as np
 import tensorflow as tf
+from PIL import Image
 
 from src.estimation.blazepose.data.preprocessing import cube_to_box
 from src.estimation.jgrp2o.preprocessing import get_resize_coeffs
@@ -9,7 +11,8 @@ from src.estimation.jgrp2o.preprocessing_com import ComPreprocessor, crop_to_bcu
 from src.system.components.base import Estimator
 from src.utils.camera import Camera
 from src.utils.imaging import normalize_to_range, resize_bilinear_nearest
-from src.utils.paths import ROOT_DIR, SRC_DIR
+from src.utils.paths import ROOT_DIR, SRC_DIR, OTHER_DIR
+from src.utils.logs import get_current_timestamp
 
 
 class BlazeposeEstimator(Estimator):
@@ -38,6 +41,7 @@ class BlazeposeEstimator(Estimator):
         # normalized image has shape [255, 255, 1]
         pred_joints_batch, pred_heatmap_batch, pred_presence_batch = self.model(normalized_images_batch)
         pred_joints_uvz = pred_joints_batch[0]  # coordinates are in range [0, 1]
+        # self._save_image(normalized_images_batch[0], pred_joints_uvz) # TODO: DELETE TEMPORARY CODE
         pred_heatmap = pred_heatmap_batch[0]  # heatmap values are in range [0, 1]
         pred_presence = pred_presence_batch[0]  # presence are probabilities for each joint in range [0, 1]
         present_joints = tf.reduce_sum(tf.cast(pred_presence > 0.5, tf.int32))
@@ -45,6 +49,15 @@ class BlazeposeEstimator(Estimator):
         hand_presence = present_joints >= 10
         joints_uvz = self.postprocess(pred_joints_uvz, crop_offset_uv)
         return hand_presence, joints_uvz, normalized_images_batch[0]
+
+    def _save_image(self, image, joints):
+        timestamp = get_current_timestamp()
+        save_image_path = OTHER_DIR.joinpath(F"extraction/{timestamp}_image.npy")
+        save_joints_path = OTHER_DIR.joinpath(F"extraction/{timestamp}_joints.npy")
+        #im = Image.fromarray(image.numpy())
+        #im.save(save_image_path)
+        np.save(save_image_path, image.numpy())
+        np.save(save_joints_path, joints.numpy())
 
     def preprocess(self, image, rectangle):
         """
@@ -86,5 +99,6 @@ class BlazeposeEstimator(Estimator):
     def postprocess(self, pred_joints_uvz, bbox):
         resize_coeffs = get_resize_coeffs(bbox, target_size=[self.model_image_size, self.model_image_size])
         pred_joints_uv = pred_joints_uvz[..., :2]
-        joints_uv = pred_joints_uv * self.model_image_size / resize_coeffs[tf.newaxis, :] + tf.cast(bbox[tf.newaxis, :2], tf.float32)
+        joints_uv = pred_joints_uv * self.model_image_size / resize_coeffs[tf.newaxis, :] + tf.cast(
+            bbox[tf.newaxis, :2], tf.float32)
         return tf.concat([joints_uv, pred_joints_uvz[..., 2:3]], axis=-1)
