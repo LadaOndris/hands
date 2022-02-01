@@ -20,7 +20,7 @@ class OpencvDisplay(Display):
                 cv2.rectangle(depth_colormap, (rect[0], rect[1]), (rect[2], rect[3]), (255, 0, 0), 2)
         if keypoints is not None:
             for point in keypoints:
-                cv2.circle(depth_colormap, (point[0], point[1]), radius=0, color=(0, 0, 255), thickness=2)
+                cv2.circle(depth_colormap, (point[0], point[1]), radius=0, color=(0, 0, 255), thickness=4)
 
         cv2.imshow(self.window_same, depth_colormap)
         # Don't wait for the user to press a key
