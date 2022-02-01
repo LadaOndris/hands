@@ -57,6 +57,7 @@ class HandTracker:
                 # Reject if the hand is not present
                 else:
                     print("Hand was lost.")
+                    self.display.update(image.numpy())
                     keypoints = None
 
             print("Elapsed time [ms]: {:.0f}".format((time.time() - start_time) * 1000))
