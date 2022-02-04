@@ -34,14 +34,14 @@ class BlazeposeEstimator(Estimator):
         self.model.load_weights(weights_path)
         self.com_preprocessor = ComPreprocessor(camera, thresholding=False)
 
-    @tf.function
+    # @tf.function # TODO: Uncomment please
     def estimate(self, image, rectangle):
         # original image has shape [480, 480, 1]
         normalized_images_batch, crop_offset_uv = self.preprocess(image, rectangle)
         # normalized image has shape [255, 255, 1]
         pred_joints_batch, pred_heatmap_batch, pred_presence_batch = self.model(normalized_images_batch)
         pred_joints_uvz = pred_joints_batch[0]  # coordinates are in range [0, 1]
-        # self._save_image(normalized_images_batch[0], pred_joints_uvz) # TODO: DELETE TEMPORARY CODE
+        self._save_image(normalized_images_batch[0], pred_joints_uvz)  # TODO: DELETE TEMPORARY CODE
         pred_heatmap = pred_heatmap_batch[0]  # heatmap values are in range [0, 1]
         pred_presence = pred_presence_batch[0]  # presence are probabilities for each joint in range [0, 1]
         present_joints = tf.reduce_sum(tf.cast(pred_presence > 0.5, tf.int32))
@@ -54,8 +54,6 @@ class BlazeposeEstimator(Estimator):
         timestamp = get_current_timestamp()
         save_image_path = OTHER_DIR.joinpath(F"extraction/{timestamp}_image.npy")
         save_joints_path = OTHER_DIR.joinpath(F"extraction/{timestamp}_joints.npy")
-        #im = Image.fromarray(image.numpy())
-        #im.save(save_image_path)
         np.save(save_image_path, image.numpy())
         np.save(save_joints_path, joints.numpy())
 
