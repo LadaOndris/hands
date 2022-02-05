@@ -7,23 +7,21 @@ from src.utils.plots import plot_depth_image
 
 
 @timing
-def find_convex_hull(image):
-    ret, thresh = cv.threshold(image, 0.7, 1, cv.THRESH_BINARY_INV)
-
-    thresh = cv.convertScaleAbs(thresh)
-    contours, hierarchy = cv.findContours(thresh, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE)
-
+def find_biggest_convex_hull(image):
+    contours, hierarchy = cv.findContours(image, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE)
     biggest_contour = max(contours, key=lambda x: cv.contourArea(x))
     hull = cv.convexHull(biggest_contour, returnPoints=False)
     defects = cv.convexityDefects(biggest_contour, hull)
-    return thresh, biggest_contour, hull, defects
+    return biggest_contour, hull, defects
 
 
 def display_contour(image):
     # kernel = np.ones((8, 8), np.uint8)
     # image = cv.morphologyEx(img, cv.MORPH_DILATE, kernel)
+    ret, thresh = cv.threshold(image, 0.7, 1, cv.THRESH_BINARY_INV)
+    thresh = cv.convertScaleAbs(thresh)
 
-    thresh, biggest_contour, hull, defects = find_convex_hull(image)
+    biggest_contour, hull, defects = find_biggest_convex_hull(thresh)
     drawing = np.zeros((thresh.shape[0], thresh.shape[1], 3), np.uint8)
     cnt = biggest_contour
 

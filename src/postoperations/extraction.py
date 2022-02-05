@@ -47,6 +47,7 @@ def display_interpolated_image(image, joints2d, show_fig=True, fig_location=None
         interpolate_curve(ax, image, joints2d, joint_type)
     save_show_fig(fig, fig_location, show_fig)
 
+
 def line_rect_intersection(point1, point2, rect):
     Ax = float(point1[0])
     Ay = float(point1[1])
@@ -74,11 +75,12 @@ def line_rect_intersection(point1, point2, rect):
         x = (y + s * Ax - Ay) / s
     return [int(x), int(y)]
 
+
 @timing
 def draw_interpolated_lines(image, joints):
     for id_previous, rhs in enumerate(joints[2:-1], 1):
-       lhs = joints[id_previous]
-       cv.line(image, (lhs[0], lhs[1]), (rhs[0], rhs[1]), (0, 0, 0))
+        lhs = joints[id_previous]
+        cv.line(image, (lhs[0], lhs[1]), (rhs[0], rhs[1]), (0, 0, 0))
     # From index finger to thumb
     index = joints[1]
     thumb = joints[0]
@@ -94,36 +96,47 @@ def draw_interpolated_lines(image, joints):
     return image
 
 
+@timing
 def display_removed_palm(image, joints2d, show_fig=True, fig_location=None, figsize=(4, 3)):
-    # fig, ax = plt.subplots(1, figsize=figsize)
-
-    # _plot_image_with_skeleton(fig, ax, image, joints2d)
-
-    ret, thresh = cv.threshold(image, 0.7, 1, cv.THRESH_BINARY_INV)
+    # the interesting thing is that range of pixels is [-1, 1]
+    # with hand probably in negative numbers if there is some background
+    ret, thresh = cv.threshold(image, 0.2, 1, cv.THRESH_BINARY_INV)
     thresh = cv.convertScaleAbs(thresh)
 
+    drawing = cv.cvtColor(image, cv.COLOR_GRAY2BGR)
+
     for joint_type in ['pip', 'dip', 'tip']:
-        # TODO: Copy thresh array
+        # Copy thresholded image
+        mask = thresh.copy()
+        # Separate palm from fingers
         joints_of_same_type = joints2d[joint_indices[joint_type]]
-        thresh = draw_interpolated_lines(thresh, joints_of_same_type)
+        mask = draw_interpolated_lines(mask, joints_of_same_type)
         seed_point = joints2d[joint_indices['mcp'][3]]
-        cv.floodFill(thresh, None, (seed_point[0], seed_point[1]), 0)
+        cv.floodFill(mask, None, (seed_point[0], seed_point[1]), 0)
 
-        # TODO: Check there are 5 big convex hulls
-        # by finding contours and their convex hulls
+        # Check there are 5 big convex hulls by finding contours
+        contours, hierarchy = cv.findContours(mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+        big_enough_contours = []
+        for contour in contours:
+            area = cv.contourArea(contour)
+            if area > 100:
+                big_enough_contours.append(contour)
 
-        # TODO: Draw convex hulls into the original image
-
-
-    plt.imshow(thresh, 'gray')
+        if len(big_enough_contours) == 5:
+            # Draw convex hulls into the original image
+            for contour in big_enough_contours:
+                hull = cv.convexHull(contour, returnPoints=True)
+                cv.drawContours(drawing, [hull], -1, (0, 0, 200), 2)
+            break
+    plt.imshow(drawing)
     plt.show()
-    # save_show_fig(fig, fig_location, show_fig)
 
 
-datetime = F"20220201-172311"  # not so perfect, requires correction
-# datetime = F"20220201-172322"  # perfect for correction
+# datetime = F"20220201-172311"  # not so perfect, requires correction
+datetime = F"20220201-172322"  # perfect for correction
 # datetime = F"20220201-172325"  # rotated hand, what happens to correction?
 # datetime = F"20220201-172328"  # rotated hand, what happens to correction?
+datetime = F"20220201-172312"  # nice pose
 img_path = OTHER_DIR.joinpath(F"extraction/{datetime}_image.npy")
 jnt_path = OTHER_DIR.joinpath(F"extraction/{datetime}_joints.npy")
 
