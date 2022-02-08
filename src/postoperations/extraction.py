@@ -131,9 +131,9 @@ def display_removed_palm(image, joints2d, show_fig=True, fig_location=None, figs
                 hull = cv.convexHull(contour, returnPoints=True)
                 cv.drawContours(drawing, [hull], -1, (0, 0, 200), 2)
             break
-    plt.imshow(drawing)
-    plt.show()
-
+    cv.imshow('fingercrops', drawing)
+    cv.waitKey(0)
+    cv.destroyAllWindows()
 
 if __name__ == "__main__":
     # datetime = F"20220201-172311"  # not so perfect, requires correction
