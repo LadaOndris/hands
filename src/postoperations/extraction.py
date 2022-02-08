@@ -1,5 +1,8 @@
 """
 Finger extraction
+
+Extracts fingers by interpolation keypoints with lines and
+removing the palm.
 """
 
 import cv2 as cv
@@ -132,17 +135,18 @@ def display_removed_palm(image, joints2d, show_fig=True, fig_location=None, figs
     plt.show()
 
 
-# datetime = F"20220201-172311"  # not so perfect, requires correction
-datetime = F"20220201-172322"  # perfect for correction
-# datetime = F"20220201-172325"  # rotated hand, what happens to correction?
-# datetime = F"20220201-172328"  # rotated hand, what happens to correction?
-datetime = F"20220201-172312"  # nice pose
-img_path = OTHER_DIR.joinpath(F"extraction/{datetime}_image.npy")
-jnt_path = OTHER_DIR.joinpath(F"extraction/{datetime}_joints.npy")
+if __name__ == "__main__":
+    # datetime = F"20220201-172311"  # not so perfect, requires correction
+    datetime = F"20220201-172322"  # perfect for correction
+    # datetime = F"20220201-172325"  # rotated hand, what happens to correction?
+    # datetime = F"20220201-172328"  # rotated hand, what happens to correction?
+    datetime = F"20220201-172312"  # nice pose
+    img_path = OTHER_DIR.joinpath(F"extraction/{datetime}_image.npy")
+    jnt_path = OTHER_DIR.joinpath(F"extraction/{datetime}_joints.npy")
 
-img = np.load(img_path)
-jnt = np.load(jnt_path)
-jnt2d = jnt[:, :2] * 255
+    img = np.load(img_path)
+    jnt = np.load(jnt_path)
+    jnt2d = jnt[:, :2] * 255
 
-display_removed_palm(img, jnt2d)
-# display_interpolated_image(img, jnt2d)
+    display_removed_palm(img, jnt2d)
+    # display_interpolated_image(img, jnt2d)
