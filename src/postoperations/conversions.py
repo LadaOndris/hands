@@ -6,7 +6,7 @@ from src.utils.live import get_depth_unit
 
 pipeline = rs.pipeline()
 config = rs.config()
-config.enable_stream(rs.stream.depth, 640, 480)
+config.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
 config.enable_stream(rs.stream.color, 640, 480)
 
 profile = pipeline.start(config)
@@ -35,14 +35,25 @@ def convert_depth_coords_to_color_coords(depth_pixel_coords, depth_pixel_value):
     depth_point = rs.rs2_deproject_pixel_to_point(depth_intrinsics, depth_pixel_coords, depth_pixel_value)
     #
     color_point = rs.rs2_transform_point_to_point(depth_to_color_extrin, depth_point)
+    color_point[0] += 0.05
     # From 3D space to 2D space
     color_pixel = rs.rs2_project_point_to_pixel(color_intrinsics, color_point)
     print(F"\n\t color_pixel: {color_pixel}")
     return color_pixel
 
 
+depth_pixel_coords = [200, 200]  # Random pixel
+
+
+def on_mouse(event, x, y, flags, param):
+    global depth_pixel_coords
+    if event == cv.EVENT_MOUSEMOVE:
+        depth_pixel_coords = (x, y)
+
+
 cv.namedWindow('Depth', cv.WINDOW_NORMAL)
 cv.namedWindow('Color', cv.WINDOW_GUI_NORMAL)
+cv.setMouseCallback('Depth', on_mouse)
 
 try:
     while True:
@@ -54,13 +65,13 @@ try:
         color_image = np.array(color_frame.get_data())
 
         # to meters
+        depth_image[depth_image > 1000] = 0
         depth_image_in_meters = 1 / (depth_image * depth_unit)
         depth_image_in_meters = np.where(depth_image == 0, 0, depth_image_in_meters)[..., np.newaxis]
 
         depth_drawing = cv.applyColorMap(cv.convertScaleAbs(depth_image, alpha=0.4), cv.COLORMAP_BONE)
         color_drawing = color_image
 
-        depth_pixel_coords = [200, 200]  # Random pixel
         depth_pixel_value = depth_image_in_meters[depth_pixel_coords[1], depth_pixel_coords[0]]
 
         color_pixel_coords = convert_depth_coords_to_color_coords(depth_pixel_coords, depth_pixel_value)
