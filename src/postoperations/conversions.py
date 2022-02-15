@@ -69,7 +69,8 @@ try:
         depth_image_in_meters = 1 / (depth_image * depth_unit)
         depth_image_in_meters = np.where(depth_image == 0, 0, depth_image_in_meters)[..., np.newaxis]
 
-        depth_drawing = cv.applyColorMap(cv.convertScaleAbs(depth_image, alpha=0.4), cv.COLORMAP_BONE)
+        depth_drawing = cv.applyColorMap(cv.convertScaleAbs(depth_image, alpha=255 / depth_image.max()),
+                                         cv.COLORMAP_JET)
         color_drawing = color_image
 
         depth_pixel_value = depth_image_in_meters[depth_pixel_coords[1], depth_pixel_coords[0]]
