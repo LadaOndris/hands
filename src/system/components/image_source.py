@@ -9,6 +9,8 @@ from src.utils.live import get_depth_unit
 class RealSenseCameraWrapper:
 
     def __init__(self, enable_depth: bool, enable_color: bool):
+        if not enable_color and not enable_depth:
+            raise ValueError('Both color and depth cannot be disabled.')
         self.is_depth_enabled = enable_depth
         self.is_color_enabled = enable_color
 

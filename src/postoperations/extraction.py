@@ -99,41 +99,60 @@ def draw_interpolated_lines(image, joints):
     return image
 
 
-@timing
-def display_removed_palm(image, joints2d, show_fig=True, fig_location=None, figsize=(4, 3)):
-    # the interesting thing is that range of pixels is [-1, 1]
-    # with hand probably in negative numbers if there is some background
-    ret, thresh = cv.threshold(image, 0.2, 1, cv.THRESH_BINARY_INV)
-    thresh = cv.convertScaleAbs(thresh)
+class FingerExtractor:
 
-    drawing = cv.cvtColor(image, cv.COLOR_GRAY2BGR)
+    def __init__(self):
+        pass
 
-    for joint_type in ['pip', 'dip', 'tip']:
-        # Copy thresholded image
-        mask = thresh.copy()
-        # Separate palm from fingers
-        joints_of_same_type = joints2d[joint_indices[joint_type]]
-        mask = draw_interpolated_lines(mask, joints_of_same_type)
-        seed_point = joints2d[joint_indices['mcp'][3]]
-        cv.floodFill(mask, None, (seed_point[0], seed_point[1]), 0)
+    @timing
+    def extract_hulls(self, depth_image, joints2d):
+        # the interesting thing is that range of pixels is [-1, 1]
+        # with hand probably in negative numbers if there is some background
+        ret, thresh = cv.threshold(depth_image, 0.2, 1, cv.THRESH_BINARY_INV)
+        thresh = cv.convertScaleAbs(thresh)
+        hulls = []
 
-        # Check there are 5 big convex hulls by finding contours
-        contours, hierarchy = cv.findContours(mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
-        big_enough_contours = []
-        for contour in contours:
-            area = cv.contourArea(contour)
-            if area > 100:
-                big_enough_contours.append(contour)
+        for joint_type in ['pip', 'dip', 'tip']:
+            # Copy thresholded image
+            mask = thresh.copy()
+            # Separate palm from fingers
+            joints_of_same_type = joints2d[joint_indices[joint_type]]
+            mask = draw_interpolated_lines(mask, joints_of_same_type)
+            seed_point = joints2d[joint_indices['mcp'][3]]
+            cv.floodFill(mask, None, (seed_point[0], seed_point[1]), 0)
 
-        if len(big_enough_contours) == 5:
-            # Draw convex hulls into the original image
-            for contour in big_enough_contours:
-                hull = cv.convexHull(contour, returnPoints=True)
-                cv.drawContours(drawing, [hull], -1, (0, 0, 200), 2)
-            break
-    cv.imshow('fingercrops', drawing)
-    cv.waitKey(0)
-    cv.destroyAllWindows()
+            # Check there are 5 big convex hulls by finding contours
+            contours, hierarchy = cv.findContours(mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
+            big_enough_contours = []
+            for contour in contours:
+                area = cv.contourArea(contour)
+                if area > 100:
+                    big_enough_contours.append(contour)
+
+            if len(big_enough_contours) == 5:
+                # Draw convex hulls into the original image
+                for contour in big_enough_contours:
+                    hull = cv.convexHull(contour, returnPoints=True)
+                    hulls.append(hull)
+                break
+        return hulls
+
+
+class ExtractedFingersDisplay:
+
+    def __init__(self):
+        self.window_name = 'fingercrops'
+        cv.namedWindow(self.window_name, cv.WINDOW_NORMAL)
+
+    def display(self, color_image, hulls):
+        for hull in hulls:
+            cv.drawContours(color_image, [hull], -1, (0, 0, 200), 2)
+        cv.imshow(self.window_name, color_image)
+        cv.waitKey(0)
+
+    def __del__(self):
+        cv.destroyWindow(self.window_name)
+
 
 if __name__ == "__main__":
     # datetime = F"20220201-172311"  # not so perfect, requires correction
@@ -148,5 +167,12 @@ if __name__ == "__main__":
     jnt = np.load(jnt_path)
     jnt2d = jnt[:, :2] * 255
 
-    display_removed_palm(img, jnt2d)
+    extractor = FingerExtractor()
+    display = ExtractedFingersDisplay()
+
+    hulls = extractor.extract_hulls(img, jnt2d)
+    color_image = cv.cvtColor(img, cv.COLOR_GRAY2BGR)
+    display.display(color_image, hulls)
+
+    # display_removed_palm(img, jnt2d)
     # display_interpolated_image(img, jnt2d)
