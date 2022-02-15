@@ -1,7 +1,7 @@
 import cv2
 
 from src.system.components.base import Display
-from src.system.components.image_source import LiveRealSenseImageSource
+from src.system.components.image_source import RealSenseCameraWrapper
 
 
 class OpencvDisplay(Display):
@@ -29,7 +29,8 @@ class OpencvDisplay(Display):
 
 if __name__ == "__main__":
     display = OpencvDisplay()
-    img_source = LiveRealSenseImageSource()
+    realsense_wrapper = RealSenseCameraWrapper()
+    img_source = realsense_wrapper.get_depth_image_source()
     while True:
-        img = img_source.next_image()
+        img = img_source.get_new_image()
         display.update(img)

@@ -8,7 +8,7 @@ from src.system.components.base import Detector, Display, Estimator, ImageSource
 from src.system.components.detector import BlazehandDetector
 from src.system.components.display import OpencvDisplay
 from src.system.components.estimator import BlazeposeEstimator
-from src.system.components.image_source import LiveRealSenseImageSource
+from src.system.components.image_source import DepthRealSenseImageSource, RealSenseCameraWrapper
 from src.system.components.keypoints_to_rectangle import KeypointsToRectangleImpl
 
 
@@ -35,7 +35,7 @@ class HandTracker:
             # Capture image to process next
             start_time = time.time()
 
-            image = self.image_source.next_image()
+            image = self.image_source.get_new_image()
             image = tf.convert_to_tensor(image)
 
             # Detect when there no hand being tracked
@@ -67,7 +67,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     args = parser.parse_args()
 
-    tracker = HandTracker(image_source=LiveRealSenseImageSource(),
+    realsense_wrapper = RealSenseCameraWrapper(enable_depth=True)
+    tracker = HandTracker(image_source=realsense_wrapper.get_depth_image_source(),
                           detector=BlazehandDetector(),
                           estimator=BlazeposeEstimator(CameraBighand()),
                           keypoints_to_rectangle=KeypointsToRectangleImpl(),

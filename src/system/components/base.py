@@ -4,7 +4,11 @@ from abc import ABC, abstractmethod
 class ImageSource(ABC):
 
     @abstractmethod
-    def next_image(self):
+    def get_new_image(self):
+        pass
+
+    @abstractmethod
+    def get_previous_image(self):
         pass
 
 
