@@ -28,7 +28,7 @@ class HandTracker:
         self.keypoints_to_rectangle = keypoints_to_rectangle
         self.display = display
 
-    def track(self) -> Generator[np.ndarray]:
+    def track(self):
         rectangle = None
         keypoints = None
 
@@ -46,7 +46,8 @@ class HandTracker:
 
             # Estimate keypoints if there a hand detected
             if not tf.experimental.numpy.allclose(rectangle, 0):
-                hand_presence_flag, keypoints, normalized_image = self.estimator.estimate(image, rectangle)
+                hand_presence_flag, keypoints, normalized_keypoints, normalized_image = \
+                    self.estimator.estimate(image, rectangle)
 
                 # Display the predicted keypoints and prepare for the next frame
                 if hand_presence_flag:
@@ -55,7 +56,7 @@ class HandTracker:
                     rectangle = self.keypoints_to_rectangle.convert(keypoints)
                     # self.display.update(normalized_image.numpy())
                     self.display.update(image.numpy(), keypoints=keypoints)
-                    yield keypoints
+                    yield keypoints.numpy(), normalized_keypoints.numpy(), normalized_image.numpy()
                 # Reject if the hand is not present
                 else:
                     print("Hand was lost.")

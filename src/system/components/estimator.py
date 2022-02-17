@@ -48,7 +48,7 @@ class BlazeposeEstimator(Estimator):
         tf.print("Present joints: ", present_joints)
         hand_presence = present_joints >= 10
         joints_uvz = self.postprocess(pred_joints_uvz, crop_offset_uv)
-        return hand_presence, joints_uvz, normalized_images_batch[0]
+        return hand_presence, joints_uvz, pred_joints_uvz, normalized_images_batch[0]
 
     def _save_image(self, image, joints):
         timestamp = get_current_timestamp()

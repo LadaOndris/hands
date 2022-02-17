@@ -108,6 +108,8 @@ class FingerExtractor:
     def extract_hulls(self, depth_image, joints2d):
         # the interesting thing is that range of pixels is [-1, 1]
         # with hand probably in negative numbers if there is some background
+        if np.max(depth_image) > 1.001 or np.min(depth_image) < -1.001:
+            raise ValueError("Invalid pixel value. Expected range is [-1 1].")
         ret, thresh = cv.threshold(depth_image, 0.2, 1, cv.THRESH_BINARY_INV)
         thresh = cv.convertScaleAbs(thresh)
         hulls = []
@@ -119,7 +121,8 @@ class FingerExtractor:
             joints_of_same_type = joints2d[joint_indices[joint_type]]
             mask = draw_interpolated_lines(mask, joints_of_same_type)
             seed_point = joints2d[joint_indices['mcp'][3]]
-            cv.floodFill(mask, None, (seed_point[0], seed_point[1]), 0)
+            print((int(seed_point[0]), int(seed_point[1])))
+            cv.floodFill(mask, None, (int(seed_point[0]), int(seed_point[1])), 0)
 
             # Check there are 5 big convex hulls by finding contours
             contours, hierarchy = cv.findContours(mask, cv.RETR_TREE, cv.CHAIN_APPROX_SIMPLE)
@@ -148,7 +151,7 @@ class ExtractedFingersDisplay:
         for hull in hulls:
             cv.drawContours(color_image, [hull], -1, (0, 0, 200), 2)
         cv.imshow(self.window_name, color_image)
-        cv.waitKey(0)
+        cv.waitKey(1)
 
     def __del__(self):
         cv.destroyWindow(self.window_name)
