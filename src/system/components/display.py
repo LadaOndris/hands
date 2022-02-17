@@ -6,7 +6,7 @@ from src.system.components.image_source import RealSenseCameraWrapper
 
 class EmptyDisplay(Display):
 
-    def update(self, image, keypoints, bounding_boxes):
+    def update(self, image, keypoints=None, bounding_boxes=None):
         pass
 
 
@@ -35,7 +35,7 @@ class OpencvDisplay(Display):
 
 if __name__ == "__main__":
     display = OpencvDisplay()
-    realsense_wrapper = RealSenseCameraWrapper()
+    realsense_wrapper = RealSenseCameraWrapper(enable_depth=True, enable_color=False)
     img_source = realsense_wrapper.get_depth_image_source()
     while True:
         img = img_source.get_new_image()

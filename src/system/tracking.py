@@ -8,9 +8,10 @@ from src.system.components.base import Detector, Display, Estimator, ImageSource
 from src.system.components.detector import BlazehandDetector
 from src.system.components.display import OpencvDisplay
 from src.system.components.estimator import BlazeposeEstimator
-from src.system.components.image_source import DepthRealSenseImageSource, RealSenseCameraWrapper
+from src.system.components.image_source import RealSenseCameraWrapper
 from src.system.components.keypoints_to_rectangle import KeypointsToRectangleImpl
-
+from typing import Generator
+import numpy as np
 
 class HandTracker:
     """
@@ -27,7 +28,7 @@ class HandTracker:
         self.keypoints_to_rectangle = keypoints_to_rectangle
         self.display = display
 
-    def track(self):
+    def track(self) -> Generator[np.ndarray]:
         rectangle = None
         keypoints = None
 
@@ -54,6 +55,7 @@ class HandTracker:
                     rectangle = self.keypoints_to_rectangle.convert(keypoints)
                     # self.display.update(normalized_image.numpy())
                     self.display.update(image.numpy(), keypoints=keypoints)
+                    yield keypoints
                 # Reject if the hand is not present
                 else:
                     print("Hand was lost.")
@@ -67,7 +69,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     args = parser.parse_args()
 
-    realsense_wrapper = RealSenseCameraWrapper(enable_depth=True)
+    realsense_wrapper = RealSenseCameraWrapper(enable_depth=True, enable_color=False)
     tracker = HandTracker(image_source=realsense_wrapper.get_depth_image_source(),
                           detector=BlazehandDetector(),
                           estimator=BlazeposeEstimator(CameraBighand()),

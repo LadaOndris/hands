@@ -26,7 +26,7 @@ class RealSenseCameraWrapper:
             config.enable_stream(rs.stream.depth, 640, 480)
         if self.is_color_enabled:
             config.enable_stream(rs.stream.color, 640, 480)
-        profile = self.pipeline.start(config)
+        profile = pipeline.start(config)
         return pipeline, profile
 
     def get_color_image_source(self) -> ImageSource:

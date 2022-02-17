@@ -9,7 +9,6 @@ from system.components.image_source import RealSenseCameraWrapper
 from system.components.keypoints_to_rectangle import KeypointsToRectangleImpl
 from system.tracking import HandTracker
 
-
 class CoordsConvertor:
 
     def align_to_other_stream(self, coords):
@@ -23,7 +22,7 @@ if __name__ == "__main__":
                                detector=BlazehandDetector(),
                                estimator=BlazeposeEstimator(CameraBighand()),
                                keypoints_to_rectangle=KeypointsToRectangleImpl(),
-                               display=EmptyDisplay())  # TODO: Replace with Empty display
+                               display=EmptyDisplay())
     finger_extractor = FingerExtractor()
     coords_converter = CoordsConvertor()
     extraction_display = ExtractedFingersDisplay()
