@@ -4,6 +4,12 @@ from src.system.components.base import Display
 from src.system.components.image_source import RealSenseCameraWrapper
 
 
+class EmptyDisplay(Display):
+
+    def update(self, image, keypoints, bounding_boxes):
+        pass
+
+
 class OpencvDisplay(Display):
 
     def __init__(self):

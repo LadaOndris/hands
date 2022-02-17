@@ -3,7 +3,7 @@ import cv2 as cv
 from src.postoperations.extraction import ExtractedFingersDisplay, FingerExtractor
 from src.utils.camera import CameraBighand
 from system.components.detector import BlazehandDetector
-from system.components.display import OpencvDisplay
+from system.components.display import EmptyDisplay
 from system.components.estimator import BlazeposeEstimator
 from system.components.image_source import RealSenseCameraWrapper
 from system.components.keypoints_to_rectangle import KeypointsToRectangleImpl
@@ -23,7 +23,7 @@ if __name__ == "__main__":
                                detector=BlazehandDetector(),
                                estimator=BlazeposeEstimator(CameraBighand()),
                                keypoints_to_rectangle=KeypointsToRectangleImpl(),
-                               display=OpencvDisplay())  # TODO: Replace with Empty display
+                               display=EmptyDisplay())  # TODO: Replace with Empty display
     finger_extractor = FingerExtractor()
     coords_converter = CoordsConvertor()
     extraction_display = ExtractedFingersDisplay()
