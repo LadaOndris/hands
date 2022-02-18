@@ -12,6 +12,10 @@ from system.tracking import HandTracker
 
 
 class CoordsConvertor:
+    """
+    Performes the conversion between two cameras' coordinate systems.
+    Required information are intrinsic and extrinsic parameters.
+    """
 
     def align_to_other_stream(self, hulls):
         # The original 640 image is cropped to 480.
@@ -45,13 +49,12 @@ if __name__ == "__main__":
         depth_image = depth_image_source.get_new_image()
         color_image = color_image_source.get_new_image()
 
-        hulls_in_cropped = finger_extractor.extract_hulls(normalized_image, norm_keypoints * 256)
-        # TODO: postprocesses normalized coordinates to coordinates
-        # of the originally captured image
+        hulls_in_cropped = finger_extractor.extract_hulls(normalized_image, norm_keypoints * estimator.model_image_size)
         if len(hulls_in_cropped) > 0:
             hulls = []
             for hull_in_cropped in hulls_in_cropped:
-                hull = estimator.postprocess(hull_in_cropped.squeeze() / 256, crop_offset).numpy().astype(int)
+                hull_coords_normalized = hull_in_cropped.squeeze() / estimator.model_image_size
+                hull = estimator.postprocess(hull_coords_normalized, crop_offset).numpy().astype(int)
                 hulls.append(hull[:, np.newaxis, :])
 
             aligned_hulls = coords_converter.align_to_other_stream(hulls)

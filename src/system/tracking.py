@@ -3,19 +3,18 @@ import time
 
 import tensorflow as tf
 
-from src.utils.camera import CameraBighand
 from src.system.components.base import Detector, Display, Estimator, ImageSource, KeypointsToRectangle
 from src.system.components.detector import BlazehandDetector
 from src.system.components.display import OpencvDisplay
 from src.system.components.estimator import BlazeposeEstimator
 from src.system.components.image_source import RealSenseCameraWrapper
 from src.system.components.keypoints_to_rectangle import KeypointsToRectangleImpl
-from typing import Generator
-import numpy as np
+from src.utils.camera import CameraBighand
+
 
 class HandTracker:
     """
-    HandTracker controls the logic behind detecting and estimating.
+    HandTracker combines hand detection and pose estimation into a single system.
     Estimation is performed only if there is a detected hand, and
     detection is not enabled unless there is no hand to being tracked.
     """
