@@ -34,21 +34,21 @@ class BlazeposeEstimator(Estimator):
         self.model.load_weights(weights_path)
         self.com_preprocessor = ComPreprocessor(camera, thresholding=False)
 
-    # @tf.function # TODO: Uncomment please
+    @tf.function  # TODO: Uncomment please
     def estimate(self, image, rectangle):
         # original image has shape [480, 480, 1]
         normalized_images_batch, crop_offset_uv = self.preprocess(image, rectangle)
         # normalized image has shape [255, 255, 1]
         pred_joints_batch, pred_heatmap_batch, pred_presence_batch = self.model(normalized_images_batch)
         pred_joints_uvz = pred_joints_batch[0]  # coordinates are in range [0, 1]
-        self._save_image(normalized_images_batch[0], pred_joints_uvz)  # TODO: DELETE TEMPORARY CODE
+        # self._save_image(normalized_images_batch[0], pred_joints_uvz)  # TODO: DELETE TEMPORARY CODE
         pred_heatmap = pred_heatmap_batch[0]  # heatmap values are in range [0, 1]
         pred_presence = pred_presence_batch[0]  # presence are probabilities for each joint in range [0, 1]
         present_joints = tf.reduce_sum(tf.cast(pred_presence > 0.5, tf.int32))
-        tf.print("Present joints: ", present_joints)
+        # tf.print("Present joints: ", present_joints)
         hand_presence = present_joints >= 10
         joints_uvz = self.postprocess(pred_joints_uvz, crop_offset_uv)
-        return hand_presence, joints_uvz, pred_joints_uvz, normalized_images_batch[0]
+        return hand_presence, joints_uvz, pred_joints_uvz, normalized_images_batch[0], crop_offset_uv
 
     def _save_image(self, image, joints):
         timestamp = get_current_timestamp()

@@ -46,7 +46,7 @@ class HandTracker:
 
             # Estimate keypoints if there a hand detected
             if not tf.experimental.numpy.allclose(rectangle, 0):
-                hand_presence_flag, keypoints, normalized_keypoints, normalized_image = \
+                hand_presence_flag, keypoints, normalized_keypoints, normalized_image, crop_offset_uv = \
                     self.estimator.estimate(image, rectangle)
 
                 # Display the predicted keypoints and prepare for the next frame
@@ -56,7 +56,7 @@ class HandTracker:
                     rectangle = self.keypoints_to_rectangle.convert(keypoints)
                     # self.display.update(normalized_image.numpy())
                     self.display.update(image.numpy(), keypoints=keypoints)
-                    yield keypoints.numpy(), normalized_keypoints.numpy(), normalized_image.numpy()
+                    yield keypoints.numpy(), normalized_keypoints.numpy(), normalized_image.numpy(), crop_offset_uv.numpy()
                 # Reject if the hand is not present
                 else:
                     print("Hand was lost.")
