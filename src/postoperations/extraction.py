@@ -4,6 +4,7 @@ Finger extraction
 Extracts fingers by interpolation keypoints with lines and
 removing the palm.
 """
+from typing import List
 
 import cv2 as cv
 import matplotlib.pyplot as plt
@@ -52,6 +53,19 @@ def display_interpolated_image(image, joints2d, show_fig=True, fig_location=None
 
 
 def line_rect_intersection(point1, point2, rect):
+    """
+    Finds the intersection between a line and a rectangle.
+
+    Parameters
+    ----------
+    point1 First 2D point of the line
+    point2 Second 2D point of the line
+    rect (x, y, width, height) values defining the rectangle
+
+    Returns
+    -------
+    A 2D point as the intersection between a line and a rectangle.
+    """
     Ax = float(point1[0])
     Ay = float(point1[1])
     Bx = float(point2[0])
@@ -80,19 +94,27 @@ def line_rect_intersection(point1, point2, rect):
 
 
 @timing
-def draw_interpolated_lines(image, joints):
-    for id_previous, rhs in enumerate(joints[2:-1], 1):
-        lhs = joints[id_previous]
+def draw_interpolated_lines(image, keypoints):
+    """
+    Draws lines between given keypoints.
+    Thus, dividing the image in two parts.
+
+    Returns
+    -------
+    An image with lines drawn in it.
+    """
+    for id_previous, rhs in enumerate(keypoints[2:-1], 1):
+        lhs = keypoints[id_previous]
         cv.line(image, (lhs[0], lhs[1]), (rhs[0], rhs[1]), (0, 0, 0))
     # From index finger to thumb
-    index = joints[1]
-    thumb = joints[0]
+    index = keypoints[1]
+    thumb = keypoints[0]
     intersection = line_rect_intersection(index, thumb, (0, 0, 256, 256))
     cv.line(image, (index[0], index[1]), (intersection[0], intersection[1]), (0, 0, 0))
 
     # From a ring finger to a little finger
-    ring = joints[-2]
-    little = joints[-1]
+    ring = keypoints[-2]
+    little = keypoints[-1]
     intersection = line_rect_intersection(ring, little, (0, 0, 256, 256))
     cv.line(image, (ring[0], ring[1]), (intersection[0], intersection[1]), (0, 0, 0))
 
@@ -100,12 +122,30 @@ def draw_interpolated_lines(image, joints):
 
 
 class FingerExtractor:
+    """
+    Determines the location of each finger.
+    """
 
     def __init__(self):
         pass
 
     @timing
-    def extract_hulls(self, depth_image, joints2d):
+    def extract_hulls(self, depth_image: np.ndarray, joints2d: np.ndarray) -> List:
+        """
+        Extracts convex hulls around fingers from a normalized depth image.
+
+        Parameters
+        ----------
+        depth_image
+            Normalized depth pixel values in range [-1, 1].
+        joints2d
+            2D pixel coordinates of keypoints
+
+        Returns
+        ----------
+        hulls
+            List of arrays containing coordinates, which define each hull.
+        """
         # the interesting thing is that range of pixels is [-1, 1]
         # with hand probably in negative numbers if there is some background
         if np.max(depth_image) > 1.001 or np.min(depth_image) < -1.001:
@@ -142,12 +182,29 @@ class FingerExtractor:
 
 
 class ExtractedFingersDisplay:
+    """
+    A wrapper around a cv window for displaying convex hulls in a given image.
+    """
 
     def __init__(self):
         self.window_name = 'fingercrops'
         cv.namedWindow(self.window_name, cv.WINDOW_NORMAL)
 
-    def display(self, color_image, hulls):
+    def display(self, color_image: np.ndarray, hulls: List[np.ndarray]):
+        """
+        Displays multiple convex hulls in the given color_image.
+
+        Parameters
+        ----------
+        color_image
+            An RGB image
+        hulls
+            A list of convex hulls. Each hull is defined as an array of pixel coordinates.
+
+        Returns
+        -------
+        None
+        """
         for hull in hulls:
             cv.drawContours(color_image, [hull], -1, (0, 0, 200), 2)
         cv.imshow(self.window_name, color_image)
@@ -158,6 +215,10 @@ class ExtractedFingersDisplay:
 
 
 if __name__ == "__main__":
+    """
+    Extract fingers' convex hulls from a saved image and its corresponding 
+    keypoint coordinates and display the result.
+    """
     # datetime = F"20220201-172311"  # not so perfect, requires correction
     datetime = F"20220201-172322"  # perfect for correction
     # datetime = F"20220201-172325"  # rotated hand, what happens to correction?
