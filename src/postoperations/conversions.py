@@ -2,7 +2,32 @@ import cv2 as cv
 import numpy as np
 import pyrealsense2 as rs
 
+from src.postoperations.calibration.compute import extrinsics
 from src.utils.live import get_depth_unit
+
+
+def convert_depth_coords_to_color_coords(depth_pixel_coords, depth_pixel_value):
+    print(F"\n\t depth_pixel: {depth_pixel_coords}, value: {depth_pixel_value}")
+    # From 2D space to 3D space
+    depth_point = rs.rs2_deproject_pixel_to_point(depth_intrinsics, depth_pixel_coords, depth_pixel_value)
+
+    # Use custom extrinsic parameters approximated using cv::solvePnP
+    extrinsics_in_meters = extrinsics()
+    color_point = np.matmul(extrinsics_in_meters, np.array(depth_point + [1]))[0:3]
+    # Use extrinsic parameters provided by the manufacturer
+    # color_point = rs.rs2_transform_point_to_point(depth_to_color_extrin, depth_point)
+
+    # From 3D space to 2D space
+    color_pixel = rs.rs2_project_point_to_pixel(color_intrinsics, color_point)
+    print(F"\n\t color_pixel: {color_pixel}")
+    return color_pixel
+
+
+def on_mouse(event, x, y, flags, param):
+    global depth_pixel_coords
+    if event == cv.EVENT_MOUSEMOVE:
+        depth_pixel_coords = (x, y)
+
 
 pipeline = rs.pipeline()
 config = rs.config()
@@ -28,28 +53,7 @@ millimeter = 0.001
 # depth_unit_correction_factor = depth_unit / millimeter
 depth_unit_correction_factor = 1 / depth_unit
 
-
-def convert_depth_coords_to_color_coords(depth_pixel_coords, depth_pixel_value):
-    print(F"\n\t depth_pixel: {depth_pixel_coords}, value: {depth_pixel_value}")
-    # From 2D space to 3D space
-    depth_point = rs.rs2_deproject_pixel_to_point(depth_intrinsics, depth_pixel_coords, depth_pixel_value)
-    #
-    color_point = rs.rs2_transform_point_to_point(depth_to_color_extrin, depth_point)
-    color_point[0] += 0.05
-    # From 3D space to 2D space
-    color_pixel = rs.rs2_project_point_to_pixel(color_intrinsics, color_point)
-    print(F"\n\t color_pixel: {color_pixel}")
-    return color_pixel
-
-
 depth_pixel_coords = [200, 200]  # Random pixel
-
-
-def on_mouse(event, x, y, flags, param):
-    global depth_pixel_coords
-    if event == cv.EVENT_MOUSEMOVE:
-        depth_pixel_coords = (x, y)
-
 
 cv.namedWindow('Depth', cv.WINDOW_NORMAL)
 cv.namedWindow('Color', cv.WINDOW_GUI_NORMAL)
@@ -65,8 +69,8 @@ try:
         color_image = np.array(color_frame.get_data())
 
         # to meters
-        depth_image[depth_image > 1000] = 0
-        depth_image_in_meters = 1 / (depth_image * depth_unit)
+        # depth_image[depth_image > 1000] = 0
+        depth_image_in_meters = depth_image * depth_unit
         depth_image_in_meters = np.where(depth_image == 0, 0, depth_image_in_meters)[..., np.newaxis]
 
         depth_drawing = cv.applyColorMap(cv.convertScaleAbs(depth_image, alpha=255 / depth_image.max()),
