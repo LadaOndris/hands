@@ -1,3 +1,13 @@
+"""
+A script for capturing points for calibration of two video streams.
+
+The script saves the image pixel coordinates and depth value in files
+for later calibration.
+
+The window is closed by Escape key.
+
+"""
+
 import cv2 as cv
 import numpy as np
 import pyrealsense2 as rs

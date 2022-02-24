@@ -1,8 +1,18 @@
+"""
+A script which uses a RealSense camera to display
+two windows in OpenCV with a depth and infrared streams.
+
+The windows support mouse movement over the image, transforming a pixel
+to a corresponding pixel in the other stream. This requires intrinsic
+parameters for both streams and extrinsics between them.
+"""
+
+
 import cv2 as cv
 import numpy as np
 import pyrealsense2 as rs
 
-from src.postoperations.calibration.compute import extrinsics
+from src.postoperations.calibration.calibrate import extrinsics
 from src.utils.live import get_depth_unit
 
 

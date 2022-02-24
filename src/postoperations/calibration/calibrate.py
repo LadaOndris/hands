@@ -1,3 +1,8 @@
+"""
+Operations for calibrating two video streams---depth and color---
+using OpenCV's solvePnP function.
+"""
+
 import cv2 as cv
 import numpy as np
 
