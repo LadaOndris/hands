@@ -1,6 +1,7 @@
 import numpy as np
 import pyrealsense2 as rs
 
+from postoperations.calibration.calibrate import extrinsics_from_rotation_and_translation
 from src.system.components.base import ImageSource
 from src.utils.imaging import crop_to_equal_dims
 from src.utils.live import get_depth_unit
@@ -14,10 +15,10 @@ class RealSenseCameraWrapper:
         self.is_depth_enabled = enable_depth
         self.is_color_enabled = enable_color
 
-        self.pipeline, profile = self.start_pipeline()
+        self.pipeline, self.profile = self.start_pipeline()
 
-        self.depth_image_source: ImageSource = DepthRealSenseImageSource(self.pipeline, profile)
-        self.color_image_source: ImageSource = ColorRealSenseImageSource(self.pipeline, profile)
+        self.depth_image_source: ImageSource = DepthRealSenseImageSource(self.pipeline, self.profile)
+        self.color_image_source: ImageSource = ColorRealSenseImageSource(self.pipeline, self.profile)
 
     def start_pipeline(self) -> (rs.pipeline, rs.pipeline_profile):
         pipeline = rs.pipeline()
@@ -38,6 +39,46 @@ class RealSenseCameraWrapper:
         if not self.is_depth_enabled:
             raise RuntimeError('Depth stream was not enabled!')
         return self.depth_image_source
+
+    def get_depth_intrinsics(self) -> np.ndarray:
+        intrinsics = self._get_stream_intrinsics(rs.stream.depth)
+        return self._realsense_intrinsics_to_matrix(intrinsics)
+
+    def get_color_intrinsics(self) -> np.ndarray:
+        intrinsics = self._get_stream_intrinsics(rs.stream.color)
+        return self._realsense_intrinsics_to_matrix(intrinsics)
+
+    def _get_stream_intrinsics(self, stream: rs.stream):
+        stream = self._get_stream(stream)
+        intrinsics = stream.get_intrinsics()
+        return intrinsics
+
+    def _get_stream(self, stream: rs.stream):
+        return self.profile.get_stream(stream).as_video_stream_profile()
+
+    def _realsense_intrinsics_to_matrix(self, intrinsics) -> np.ndarray:
+        fx = intrinsics.fx
+        fy = intrinsics.fy
+        ppx = intrinsics.ppx
+        ppy = intrinsics.ppy
+        return np.array([[fx, 0, ppx],
+                         [0, fy, ppy],
+                         [0, 0, 1]])
+
+    def get_depth_to_color_extrinsics(self) -> np.ndarray:
+        depth_stream = self._get_stream(rs.stream.depth)
+        color_stream = self._get_stream(rs.stream.color)
+        depth_to_color_extrin = depth_stream.get_extrinsics_to(color_stream)
+        return self._realsense_extrinsics_to_matrix(depth_to_color_extrin)
+
+    def _realsense_extrinsics_to_matrix(self, extrinsics) -> np.ndarray:
+        rot_mat = np.asarray(extrinsics.rotation).reshape([3, 3])
+        tran_vec = np.asarray(extrinsics.translation)
+        extr = extrinsics_from_rotation_and_translation(rot_mat, tran_vec)
+        return extr
+
+    def get_depth_unit(self):
+        return get_depth_unit(self.profile)
 
     def __del__(self):
         self.pipeline.stop()

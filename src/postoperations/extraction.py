@@ -4,7 +4,7 @@ Finger extraction
 Extracts fingers by interpolation keypoints with lines and
 removing the palm.
 """
-from typing import List
+from typing import List, Tuple
 
 import cv2 as cv
 import matplotlib.pyplot as plt
@@ -130,7 +130,7 @@ class FingerExtractor:
         pass
 
     @timing
-    def extract_hulls(self, depth_image: np.ndarray, joints2d: np.ndarray) -> List:
+    def extract_hulls(self, depth_image: np.ndarray, joints2d: np.ndarray) -> Tuple[List, List]:
         """
         Extracts convex hulls around fingers from a normalized depth image.
 
@@ -153,6 +153,7 @@ class FingerExtractor:
         ret, thresh = cv.threshold(depth_image, 0.2, 1, cv.THRESH_BINARY_INV)
         thresh = cv.convertScaleAbs(thresh)
         hulls = []
+        big_enough_contours = []
 
         for joint_type in ['pip', 'dip', 'tip']:
             # Copy thresholded image
@@ -178,7 +179,7 @@ class FingerExtractor:
                     hull = cv.convexHull(contour, returnPoints=True)
                     hulls.append(hull)
                 break
-        return hulls
+        return hulls, big_enough_contours
 
 
 class ExtractedFingersDisplay:
@@ -206,7 +207,9 @@ class ExtractedFingersDisplay:
         None
         """
         for hull in hulls:
-            cv.drawContours(color_image, [hull], -1, (0, 0, 200), 2)
+            if len(hull.shape) == 2:
+                hull = hull[:, np.newaxis, :]
+            cv.drawContours(color_image, [hull[..., :2]], -1, (0, 0, 200), 2)
         cv.imshow(self.window_name, color_image)
         cv.waitKey(1)
 
@@ -234,7 +237,7 @@ if __name__ == "__main__":
     extractor = FingerExtractor()
     display = ExtractedFingersDisplay()
 
-    hulls = extractor.extract_hulls(img, jnt2d)
+    hulls, masks = extractor.extract_hulls(img, jnt2d)
     color_image = cv.cvtColor(img, cv.COLOR_GRAY2BGR)
     display.display(color_image, hulls)
 
