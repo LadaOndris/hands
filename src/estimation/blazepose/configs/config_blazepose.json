@@ -9,7 +9,7 @@
         "heatmap_kp_sigma": 2,
         "num_keypoints": 21,
         "num_keypoint_features": 4,
-        "cube_size": 200,
+        "cube_size": 220,
         "model_type": "LIGHT_SIGMOID_HEATMAP_LINEAR_REGRESS_TWOHEAD"
     },
     "train": {
