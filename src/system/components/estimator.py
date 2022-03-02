@@ -2,17 +2,17 @@ import json
 
 import numpy as np
 import tensorflow as tf
-from PIL import Image
 
 from src.estimation.blazepose.data.preprocessing import cube_to_box
-from src.estimation.jgrp2o.preprocessing import get_resize_coeffs
 from src.estimation.blazepose.models.ModelCreator import ModelCreator
+from src.estimation.jgrp2o.preprocessing import get_resize_coeffs
 from src.estimation.jgrp2o.preprocessing_com import ComPreprocessor, crop_to_bcube, crop_to_bounding_box
 from src.system.components.base import Estimator
 from src.utils.camera import Camera
+from src.utils.debugging import timing
 from src.utils.imaging import normalize_to_range, resize_bilinear_nearest
-from src.utils.paths import ROOT_DIR, SRC_DIR, OTHER_DIR
 from src.utils.logs import get_current_timestamp
+from src.utils.paths import OTHER_DIR, ROOT_DIR, SRC_DIR
 
 
 class BlazeposeEstimator(Estimator):
@@ -34,7 +34,7 @@ class BlazeposeEstimator(Estimator):
         self.model.load_weights(weights_path)
         self.com_preprocessor = ComPreprocessor(camera, thresholding=False)
 
-    @tf.function  # TODO: Uncomment please
+    @tf.function
     def estimate(self, image, rectangle):
         # original image has shape [480, 480, 1]
         normalized_images_batch, crop_offset_uv = self.preprocess(image, rectangle)
@@ -57,6 +57,8 @@ class BlazeposeEstimator(Estimator):
         np.save(save_image_path, image.numpy())
         np.save(save_joints_path, joints.numpy())
 
+    @timing
+    @tf.function
     def preprocess(self, image, rectangle):
         """
         Parameters
@@ -77,6 +79,12 @@ class BlazeposeEstimator(Estimator):
         cropped_image = crop_to_bounding_box(image, rectangle)
         center_point_uvz = self.com_preprocessor.compute_coms(cropped_image[tf.newaxis, ...],
                                                               offsets=rectangle[tf.newaxis, ..., :2])[0]
+        # center_point_uvz = self._adjust_center_point(center_point_uvz, image)
+
+        # A forearm is expected at the bottom - move center point a little higher
+        shift_in_mm = tf.constant([0, -20, 0], dtype=tf.float32)
+        center_point_uvz += shift_in_mm
+
         # crop around center
         cropped_image, bbox, min_depth, max_depth = self._crop_image(image, center_point_uvz)
         # TODO: Rotate image
@@ -85,6 +93,16 @@ class BlazeposeEstimator(Estimator):
         # normalize depth to the [-1, 1] range
         normalized_image = normalize_to_range(resized_image, [-1, 1], min_depth, max_depth)
         return normalized_image[tf.newaxis, ...], bbox
+
+    # def _adjust_center_point(self, center_point_uvz, image):
+    #     """
+    #     Sometimes, it may happen that the Z coordinate is too far away, which
+    #     causes part of the hand being cropped by the bounding cube.
+    #     Therefore, let's move the Z coordinate closer to the camera
+    #     by a certain portion of the bounding cube's dimension.
+    #     """
+    #     min_z = center_point_uvz[..., 2:3] - self.cube_dims[2] / 2
+    #     tf.reduce_sum(image)
 
     def _crop_image(self, image, center_point_vu):
         bcube = self.com_preprocessor.com_to_bcube(center_point_vu, size=self.cube_dims)
