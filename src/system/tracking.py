@@ -34,7 +34,6 @@ class HandTracker:
         while True:
             # Capture image to process next
             start_time = time.time()
-
             image = self.image_source.get_new_image()
             image = tf.convert_to_tensor(image)
 
@@ -55,7 +54,7 @@ class HandTracker:
                     rectangle = self.keypoints_to_rectangle.convert(keypoints)
                     # self.display.update(normalized_image.numpy())
                     self.display.update(image.numpy(), keypoints=keypoints)
-                    yield keypoints.numpy(), normalized_keypoints.numpy(), normalized_image.numpy(), crop_offset_uv.numpy()
+                    # yield keypoints.numpy(), normalized_keypoints.numpy(), normalized_image.numpy(), crop_offset_uv.numpy()
                 # Reject if the hand is not present
                 else:
                     print("Hand was lost.")
@@ -70,9 +69,15 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     realsense_wrapper = RealSenseCameraWrapper(enable_depth=True, enable_color=False)
-    tracker = HandTracker(image_source=realsense_wrapper.get_depth_image_source(),
+    depth_image_source = realsense_wrapper.get_depth_image_source()
+    display = OpencvDisplay()
+
+    tracker = HandTracker(image_source=depth_image_source,
                           detector=BlazehandDetector(),
                           estimator=BlazeposeEstimator(CameraBighand()),
                           keypoints_to_rectangle=KeypointsToRectangleImpl(),
-                          display=OpencvDisplay())
+                          display=display)
+    # while True:
+    #     img = depth_image_source.get_new_image()
+    #     display.update(img)
     tracker.track()

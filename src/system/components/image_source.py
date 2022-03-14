@@ -7,9 +7,10 @@ from src.utils.imaging import crop_to_equal_dims
 from src.utils.live import get_depth_unit
 
 
+
 class RealSenseCameraWrapper:
 
-    def __init__(self, enable_depth: bool, enable_color: bool):
+    def __init__(self, enable_depth: bool, enable_color: bool, ):
         if not enable_color and not enable_depth:
             raise ValueError('Both color and depth cannot be disabled.')
         self.is_depth_enabled = enable_depth
@@ -28,6 +29,33 @@ class RealSenseCameraWrapper:
         if self.is_color_enabled:
             config.enable_stream(rs.stream.color, 640, 480)
         profile = pipeline.start(config)
+
+        if self.is_depth_enabled:
+            # Set Hand preset
+            depth_sensor = profile.get_device().first_depth_sensor()
+
+            # if camera is not SR305, which does not support the following settings
+            camera_name = profile.get_device().get_info(rs.camera_info.name)
+            if "SR305" not in camera_name:
+                # Set auto exposure to avoid overexposure or underexposure
+                depth_sensor.set_option(rs.option.enable_auto_exposure, True)
+
+                # Set disparity shift
+                device = rs.context().query_devices()[0]
+                advnc_mode = rs.rs400_advanced_mode(device)
+                depth_table_control_group = advnc_mode.get_depth_table()
+                depth_table_control_group.disparityShift = 20
+                advnc_mode.set_depth_table(depth_table_control_group)
+
+            preset_range = depth_sensor.get_option_range(rs.option.visual_preset)
+            print('preset range:' + str(preset_range))
+            for i in range(int(preset_range.max)):
+                visulpreset = depth_sensor.get_option_value_description(rs.option.visual_preset, i)
+                print('%02d: %s' % (i, visulpreset))
+                if visulpreset == "Hand":
+                    depth_sensor.set_option(rs.option.visual_preset, i)
+                    break
+
         return pipeline, profile
 
     def get_color_image_source(self) -> ImageSource:
@@ -81,7 +109,8 @@ class RealSenseCameraWrapper:
         return get_depth_unit(self.profile)
 
     def __del__(self):
-        self.pipeline.stop()
+        if hasattr(self, "pipeline"):
+            self.pipeline.stop()
 
 
 class ColorRealSenseImageSource(ImageSource):

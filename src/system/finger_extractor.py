@@ -1,8 +1,8 @@
-from typing import List
-
-import numpy as np
 import cv2 as cv
-from postoperations.calibration.calibrate import deproject_pixels, extrinsics, project_points, transform_points_to_points
+import numpy as np
+
+from postoperations.calibration.calibrate import deproject_pixels, project_points, \
+    transform_points_to_points
 from src.postoperations.extraction import ExtractedFingersDisplay, FingerExtractor
 from src.utils.camera import CameraBighand
 from system.components.detector import BlazehandDetector
@@ -43,26 +43,52 @@ def get_contour_depth(depth_image, contour):
     mean_depth = np.mean(depth_values[np.nonzero(depth_values)])
     return mean_depth
 
+
+def postprocess_contours(contours_in_cropped):
+    # TODO: Do not fill the whole contour, but only the fingertip
+    # Fill contours here to create finger masks and retrieve depth of each finger
+    contours_with_depth = []
+    for contour_in_cropped in contours_in_cropped:
+        contour_coords_normalized = contour_in_cropped.squeeze() / estimator.model_image_size
+        contour = estimator.postprocess(contour_coords_normalized, new_bbox).numpy().astype(int)
+        contour_mean_depth = get_contour_depth(previous_depth_image, contour)
+        contour_coords_depth = np.full(shape=(contour.shape[0], 1), fill_value=contour_mean_depth)
+        contour_with_depth = np.concatenate([contour, contour_coords_depth], axis=-1)
+        contour_with_depth[..., 0] += 80
+        # print(contour_with_depth[..., -1])
+        contours_with_depth.append(contour_with_depth)
+    return contours_with_depth
+
+def get_farthest_point(point_from, points):
+    pass
+
+def find_finger_tips(contours):
+    tips = []
+    for contour in contours:
+        pass
+    return tips
+
 if __name__ == "__main__":
     realsense_wrapper = RealSenseCameraWrapper(enable_depth=True, enable_color=True)
     color_image_source = realsense_wrapper.get_color_image_source()
     depth_image_source = realsense_wrapper.get_depth_image_source()
     estimator = BlazeposeEstimator(CameraBighand())
+    keypoints_to_rectangle = KeypointsToRectangleImpl()
     hand_tracker = HandTracker(image_source=realsense_wrapper.get_depth_image_source(),
                                detector=BlazehandDetector(),
                                estimator=estimator,
-                               keypoints_to_rectangle=KeypointsToRectangleImpl(),
+                               keypoints_to_rectangle=keypoints_to_rectangle,
                                display=OpencvDisplay())
     finger_extractor = FingerExtractor()
     coords_converter = CoordsConvertor(realsense_wrapper.get_depth_intrinsics(),
                                        realsense_wrapper.get_color_intrinsics(),
-                                       #realsense_wrapper.get_depth_to_color_extrinsics())
-                                       extrinsics=extrinsics())
+                                       realsense_wrapper.get_depth_to_color_extrinsics())
+    # extrinsics=extrinsics())
     extraction_display = ExtractedFingersDisplay()
 
-    for keypoints, norm_keypoints, normalized_image, crop_offset in hand_tracker.track():
+    for keypoints, norm_keypoints, normalized_image, bbox in hand_tracker.track():
         # TODO: is the hand at the distance of 40 cm or closer?
-        # Track the hand if not.
+        # Just track the hand if not.
 
         # TODO: accept gesture?
         is_gesture_accepted = True
@@ -72,28 +98,23 @@ if __name__ == "__main__":
         depth_image = depth_image_source.get_new_image()
         color_image = color_image_source.get_new_image()
 
-        hulls_in_cropped, contours_in_cropped = finger_extractor.extract_hulls(normalized_image, norm_keypoints * estimator.model_image_size)
+        # Normalize the current depth image - crop around the keypoints and normalize values
+        new_normalized_depth_image_tf, new_bbox_tf = estimator.preprocess(
+            depth_image, keypoints_to_rectangle.convert(keypoints))
+        new_normalized_depth_image, new_bbox = new_normalized_depth_image_tf[0].numpy(), new_bbox_tf.numpy()
+        depth_image_for_contouring = new_normalized_depth_image
+        keypoints_in_cropped = norm_keypoints * estimator.model_image_size  # [0, 1]^2 to [0, 255]^2
+        # Extract hulls and contours of each finger
+        hulls_in_cropped, contours_in_cropped = finger_extractor.extract_hulls(depth_image_for_contouring,
+                                                                               keypoints_in_cropped)
         if len(hulls_in_cropped) > 0:
-            # hulls = []
-            # for hull_in_cropped in hulls_in_cropped:
-            #     hull_coords_normalized = hull_in_cropped.squeeze() / estimator.model_image_size
-            #     hull = estimator.postprocess(hull_coords_normalized, crop_offset).numpy().astype(int)
-            #     hull[..., 0] += 80
-            #     hulls.append(hull)
-
-            # TODO: Do not fill the whole contour, but only the fingertip
-            # Fill contours here to create finger masks and retrieve depth of each finger
-            contours_with_depth = []
-            for contour_in_cropped in contours_in_cropped:
-                contour_coords_normalized = contour_in_cropped.squeeze() / estimator.model_image_size
-                contour = estimator.postprocess(contour_coords_normalized, crop_offset).numpy().astype(int)
-                contour_mean_depth = get_contour_depth(previous_depth_image, contour)
-                contour_coords_depth = np.full(shape=(contour.shape[0], 1), fill_value=contour_mean_depth)
-                contour_with_depth = np.concatenate([contour, contour_coords_depth], axis=-1)
-                contour_with_depth[..., 0] += 80
-                contours_with_depth.append(contour_with_depth)
-
+            contours_with_depth = postprocess_contours(contours_in_cropped)
             # Requires image in meters! Intrinsics and extrinsics are in meters as well!
-            aligned_hulls = coords_converter.align_to_other_stream(contours_with_depth)
+            aligned_contours = coords_converter.align_to_other_stream(contours_with_depth)
+            finger_tips = find_finger_tips(aligned_contours)
 
-            extraction_display.display(color_image, aligned_hulls)
+            # Display the current normalized depth image
+            # extraction_display.display(depth_image_for_contouring, [])
+
+            # Display contour in the colour stream
+            extraction_display.display(color_image, aligned_contours)
