@@ -1,3 +1,5 @@
+from typing import List
+
 import numpy as np
 import pyrealsense2 as rs
 
@@ -5,7 +7,6 @@ from postoperations.calibration.calibrate import extrinsics_from_rotation_and_tr
 from src.system.components.base import ImageSource
 from src.utils.imaging import crop_to_equal_dims
 from src.utils.live import get_depth_unit
-
 
 
 class RealSenseCameraWrapper:
@@ -152,9 +153,12 @@ class DepthRealSenseImageSource(ImageSource):
         millimeter = 0.001
         self.depth_unit_correction_factor = depth_unit / millimeter
 
-    def get_new_image(self):
+    def get_new_image(self, filters: List[rs.filter] = None):
         frameset = self.pipeline.wait_for_frames()
         depth_frame = frameset.get_depth_frame()
+        if filters is not None:
+            for filter in filters:
+                depth_frame = filter.process(depth_frame)
         depth_image = np.array(depth_frame.get_data())
         depth_image = depth_image[..., np.newaxis] * self.depth_unit_correction_factor
         # Remove background further than max_depth mm.
