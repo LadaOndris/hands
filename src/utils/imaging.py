@@ -1,3 +1,4 @@
+import numpy as np
 import tensorflow as tf
 
 from src.utils.debugging import timing
@@ -301,6 +302,19 @@ def create_coord_pairs(width, height, indexing):
     # Stack along a new axis to create pairs in the last dimension
     coords = tf.stack([xx, yy], axis=-1)
     coords = tf.cast(coords, tf.float32)  # [im_width * im_height, 2]
+    return coords
+
+
+def create_coord_pairs_np(width, height, indexing):
+    # Create all coordinate pairs
+    x = np.arange(width)
+    y = np.arange(height)
+    xx, yy = np.meshgrid(x, y, indexing=indexing)
+    xx = np.reshape(xx, [-1])
+    yy = np.reshape(yy, [-1])
+    # Stack along a new axis to create pairs in the last dimension
+    coords = np.stack([xx, yy], axis=-1)
+    coords = coords.astype(float)  # [im_width * im_height, 2]
     return coords
 
 
