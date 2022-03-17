@@ -4,9 +4,12 @@ import cv2 as cv
 import matplotlib.pyplot as plt
 import numpy as np
 import pyrealsense2 as rs
-from src.utils.imaging import create_coord_pairs_np
 
+from src.utils.imaging import create_coord_pairs_np
 from system.components.image_source import RealSenseCameraWrapper
+
+CIRCLES_COLOR = (220, 50, 30)
+CIRCLES_SIZE = 7
 
 
 class CalibratorRGBD:
@@ -24,9 +27,9 @@ class CalibratorRGBD:
 
 class CalibrationImageCapturer:
 
-    def __init__(self):
-        self.color_img_path = 'images/color_clean_bkg.npy'
-        self.depth_img_path = 'images/depth_clean_bkg.npy'
+    def __init__(self, image_name_suffix: str):
+        self.color_img_path = F"images/color_{image_name_suffix}.npy"
+        self.depth_img_path = F"images/depth_{image_name_suffix}.npy"
 
         spatial_filter = rs.spatial_filter()
         spatial_filter.set_option(rs.option.filter_magnitude, 2)
@@ -55,16 +58,48 @@ class CalibrationImageCapturer:
         return np.load(self.depth_img_path), np.load(self.color_img_path)
 
 
-def find_corners_in_color(color_img):
+def find_corners_in_color_hough(color_img):
     gray = cv.cvtColor(color_img, cv.COLOR_BGR2GRAY)
-    gray = cv.GaussianBlur(gray, (7, 7), 3, 3)
+    # ret, gray = cv.threshold(gray, 50, 255, cv.THRESH_BINARY)
+    # plt.imshow(gray, 'gray')
+    # plt.show()
+    gray = cv.GaussianBlur(gray, (9, 9), 3, 3)
     circles = cv.HoughCircles(gray, cv.HOUGH_GRADIENT, dp=1, minDist=20,
-                              param1=50, param2=20, minRadius=0, maxRadius=0)
+                              param1=30, param2=20, minRadius=0, maxRadius=0)
     circles = np.uint16(np.around(circles))
     for i in circles[0, :]:
         cv.circle(color_img, (i[0], i[1]), i[2], (0, 255, 0), 2)
         cv.circle(color_img, (i[0], i[1]), 2, (0, 0, 255), 3)
     return color_img
+
+
+def find_corners_in_color_harris(color):
+    gray = cv.cvtColor(color, cv.COLOR_BGR2GRAY)
+    ret, thres = cv.threshold(gray, 50, 255, cv.THRESH_BINARY_INV)
+    # thres = cv.morphologyEx(thres, cv.MORPH_ERODE, (25, 25))
+    # Setting ksize to (5, 5) helped in smoothing the edges
+    gray = cv.GaussianBlur(thres, (5, 5), 3, 3, cv.BORDER_DEFAULT)
+    plt.imshow(gray, 'gray');
+    plt.show()
+    dst = cv.cornerHarris(gray, blockSize=2, ksize=5, k=0.04)
+
+    xx, yy = np.where(dst > 0.01 * dst.max())
+    candidate_points = np.stack([yy, xx], axis=-1)
+    # distances = dst[candidate_points[:, 1], candidate_points[:, 0]]
+    center_of_candidates = np.mean(candidate_points, axis=0)
+    distances = np.linalg.norm(candidate_points - center_of_candidates, axis=1)
+
+    corners = []
+    expected_points = 4
+    for point_iter in range(expected_points):
+        farthest_point = get_farthest_point(candidate_points, distances)
+        candidate_points, distances = eliminate_close_points(candidate_points, distances,
+                                                             farthest_point, radius=30)
+        corners.append(farthest_point)
+        cv.circle(color, tuple(farthest_point), CIRCLES_SIZE, CIRCLES_COLOR, -1)
+
+    # img[dst > 0.01 * dst.max()] = [0, 0, 255]
+    return color
 
 
 def find_corners_in_depth_harris(depth_img):
@@ -149,6 +184,30 @@ def center_of_mass(image: np.ndarray):
         return com_uvz
 
 
+def get_farthest_point(points: np.ndarray, points_dists: np.ndarray) -> np.ndarray:
+    max_dist_idx = np.argmax(points_dists)
+    return points[max_dist_idx]
+
+
+def eliminate_close_points(points: np.ndarray, points_dists: np.ndarray,
+                           center_point: np.ndarray, radius: int) -> Tuple[np.ndarray, np.ndarray]:
+    """
+
+    Parameters
+    ----------
+    points  A set of points to filter.
+    points_dists  Another array to filter the same way as points.
+    center_point  The point from which to measure the distance to points.
+    radius  The minimum distance the points must satisfy.
+
+    Returns
+    -------
+    Updated points and points_dists
+    """
+    distances = np.linalg.norm(points - center_point, axis=1)
+    return points[distances > radius], points_dists[distances > radius]
+
+
 def find_corners_in_depth(depth_img, layer_width_mm=40):
     img = quantize_depth_values(depth_img)
     # grid_xx, grid_yy = construct_grid(depth_img.shape)
@@ -171,7 +230,7 @@ def find_corners_in_depth(depth_img, layer_width_mm=40):
 
         drawing = cv.cvtColor(gray_layer_img, cv.COLOR_GRAY2RGB)
         center_of_mass_point = center_of_mass(gray_layer_img)[:2]
-        cv.circle(drawing, tuple(center_of_mass_point), 4, (220, 50, 0), -1)
+        cv.circle(drawing, tuple(center_of_mass_point), CIRCLES_SIZE, CIRCLES_COLOR, -1)
 
         contours, hierarchy = cv.findContours(gray_layer_img, cv.RETR_LIST, cv.CHAIN_APPROX_SIMPLE)
         biggest_contour = max(contours, key=lambda x: cv.contourArea(x))
@@ -179,10 +238,25 @@ def find_corners_in_depth(depth_img, layer_width_mm=40):
         current_contour_area = cv.contourArea(biggest_contour)
 
         if current_contour_area > 100 and last_contour_area < current_contour_area:
-            cv.drawContours(drawing, [hull], -1, (0, 40, 200), 3)
-            plt.imshow(drawing)
-            plt.show()
+            # Draw convex hull
+            # cv.drawContours(drawing, [hull], -1, (100, 40, 100), 2)
             last_contour_area = current_contour_area
+
+            hull_points = hull.squeeze()
+            hull_points_dist = np.linalg.norm(hull_points - center_of_mass_point, axis=1)
+
+            corners = []
+            expected_points = 4
+            for point_iter in range(expected_points):
+                farthest_point = get_farthest_point(hull_points, hull_points_dist)
+                hull_points, hull_points_dist = eliminate_close_points(hull_points, hull_points_dist,
+                                                                       farthest_point, radius=30)
+                corners.append(farthest_point)
+                cv.circle(drawing, tuple(farthest_point), 5, (220, 50, 30), -1)
+
+            plt.imshow(drawing)
+            plt.tight_layout()
+            plt.show()
         pass
 
     # depth_img
@@ -190,15 +264,16 @@ def find_corners_in_depth(depth_img, layer_width_mm=40):
 
 
 if __name__ == "__main__":
-    capturer = CalibrationImageCapturer()
+    capturer = CalibrationImageCapturer('black_edges')
     # capturer.capture_and_save()
     depth_img, color_img = capturer.load()
 
-    # color_img_with_circles = find_corners_in_color(color_img)
-    # plt.imshow(color_img_with_circles)
-    # plt.show()
+    color_img_with_circles = find_corners_in_color_harris(color_img)
+    plt.imshow(color_img_with_circles)
+    plt.show()
     # plt.imshow(depth_img); plt.show()
     # depth_img_with_circles = find_corners_in_depth_harris(depth_img)
+
     depth_img_another = find_corners_in_depth(depth_img)
-    plt.imshow(depth_img_another)
-    plt.show()
+    # plt.imshow(depth_img_another)
+    # plt.show()
