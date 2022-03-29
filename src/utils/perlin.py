@@ -6,7 +6,7 @@ import tensorflow as tf
 def interpolant(t):
     return t * t * t * (t * (t * 6 - 15) + 10)
 
-
+@tf.function
 def generate_perlin_noise_2d(shape, res, interpolant=interpolant):
     """Generate a 2D numpy array of perlin noise.
     Args:
@@ -26,10 +26,12 @@ def generate_perlin_noise_2d(shape, res, interpolant=interpolant):
     """
 
     delta = (res[0] / shape[0], res[1] / shape[1])
+    delta = tf.cast(delta, tf.float32)
     d = (shape[0] // res[0], shape[1] // res[1])
+    res_float = tf.cast(res, tf.float32)
 
-    x_range_float64 = tf.linspace(0, res[0], int(res[0] / delta[0]) + 1)[:-1]
-    y_range_float64 = tf.linspace(0, res[0], int(res[1] / delta[1]) + 1)[:-1]
+    x_range_float64 = tf.linspace(0, res[0], tf.cast(res_float[0] / delta[0], tf.int32) + 1)[:-1]
+    y_range_float64 = tf.linspace(0, res[0], tf.cast(res_float[1] / delta[1], tf.int32) + 1)[:-1]
     x_range = tf.cast(x_range_float64, dtype=tf.float32)
     y_range = tf.cast(y_range_float64, dtype=tf.float32)
     grid_x, grid_y = tf.meshgrid(x_range, y_range)
@@ -63,9 +65,37 @@ def generate_perlin_noise_2d(shape, res, interpolant=interpolant):
     return res_tf
 
 
+def perlin_mask(img_size, resolution, threshold):
+    noise = generate_perlin_noise_2d(img_size, (resolution, resolution))
+    mask = noise > threshold
+    img = tf.where(mask, 1, 0)
+    return img
+
+@tf.function
+def random_choice(choices):
+    random_number = tf.random.uniform(shape=[1], maxval=1)[0]
+    index_float = tf.cast(tf.size(choices), dtype=tf.float32) * random_number
+    choice_index_float = tf.math.floor(index_float)
+    choice_index_int = tf.cast(choice_index_float, tf.int32)
+    return choices[choice_index_int]
+
+
+def perlin_img_noise(img_size=(256, 256)):
+    big_mask_resolution = random_choice(tf.constant([1, 4, 8]))
+    big_mask = perlin_mask(img_size, big_mask_resolution, threshold=0)
+
+    small_mask_resolution = random_choice(tf.constant([4, 4, 8, 8, 16, 32, 64, 128]))
+    threshold = random_choice(tf.constant([-0.5, -0.4, -0.3, -0.2, -0.1]))
+    small_mask = perlin_mask(img_size, small_mask_resolution, threshold=threshold)
+
+    mask = 1 - (1 - small_mask) * big_mask
+    return mask
+
+
 if __name__ == "__main__":
-    noise = generate_perlin_noise_2d((256, 256), (1, 1))
-    noise = noise.numpy()
+    # noise = generate_perlin_noise_2d((256, 256), (1, 1))
+    # noise = noise.numpy()
+    noise = perlin_img_noise().numpy()
     plt.imshow(noise, cmap='gray', interpolation='lanczos')
     plt.colorbar()
     plt.show()
