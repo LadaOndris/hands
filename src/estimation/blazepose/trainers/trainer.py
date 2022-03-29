@@ -58,12 +58,6 @@ def load_model(config, weights):
               train_config["pretrained_weights_path"])
         weights_path = ROOT_DIR.joinpath(train_config["pretrained_weights_path"])
         model.load_weights(weights_path, by_name=True, skip_mismatch=True)
-
-    # train_phase = TrainPhase(train_config.get("train_phase", "UNKNOWN"))
-    # if train_phase == train_phase.HEATMAP:
-    #     freeze_regression_layers(model)
-    # elif train_phase == train_phase.REGRESSION:
-    #     freeze_heatmap_layers(model)
     return model
 
 
@@ -124,6 +118,8 @@ def train(config, batch_size, verbose, weights=None):
               callbacks=callbacks,
               verbose=verbose)
 
+    return model.get_weights()
+
 
 def freeze_regression_layers(model):
     print("Freezing regression layers:")
@@ -143,8 +139,12 @@ def freeze_heatmap_layers(model):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--config', type=str, action='store', default=None,
-                        help='a config file name')
+    parser.add_argument('--type', type=str, action='store', default=None,
+                        help='options: [heatmap, regress, both]')
+    parser.add_argument('--config-heatmap', type=str, action='store', default='config_blazepose_heatmap.json',
+                        help='a config file name for the heatmap training stage')
+    parser.add_argument('--config-regress', type=str, action='store', default='config_blazepose_regress.json',
+                        help='a config file name for the regress training stage')
     parser.add_argument('--verbose', type=int, action='store', default=1,
                         help='verbose training output')
     parser.add_argument('--batch-size', type=int, action='store', default=64,
@@ -153,7 +153,17 @@ if __name__ == "__main__":
                         help='the weights to load the model from (default: none)')
     args = parser.parse_args()
 
-    config_path = SRC_DIR.joinpath('estimation/blazepose/configs/', args.config)
-    with open(config_path, 'r') as f:
-        config = json.load(f)
-    train(config, batch_size=args.batch_size, verbose=args.verbose, weights=args.weights)
+    heatmap_config_path = SRC_DIR.joinpath('estimation/blazepose/configs/', args.config_heatmap)
+    regress_config_path = SRC_DIR.joinpath('estimation/blazepose/configs/', args.config_regress)
+    with open(heatmap_config_path, 'r') as f:
+        heatmap_config = json.load(f)
+    with open(regress_config_path, 'r') as f:
+        regress_config = json.load(f)
+
+    if args.type == 'heatmap':
+        weights = train(heatmap_config, batch_size=args.batch_size, verbose=args.verbose, weights=args.weights)
+    elif args.type == 'regress':
+        train(heatmap_config, batch_size=args.batch_size, verbose=args.verbose, weights=args.weights)
+    elif args.type == 'both':
+        weights = train(heatmap_config, batch_size=args.batch_size, verbose=args.verbose, weights=args.weights)
+        train(regress_config, batch_size=args.batch_size, verbose=args.verbose, weights=weights)
