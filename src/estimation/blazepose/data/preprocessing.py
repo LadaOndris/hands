@@ -5,10 +5,11 @@ import tensorflow_addons as tfa
 from src.datasets.bighand.dataset import BIGHAND_DATASET_DIR, BighandDataset
 from src.estimation.blazepose.data.crop import CropType, get_crop_center_point, get_crop_type
 from src.estimation.blazepose.data.rotate import rotate_tensor, rotation_angle_from_21_keypoints
-from src.estimation.jgrp2o.preprocessing import get_resize_coeffs, get_uv_offsets, get_uv_offsets_batch, resize_coords
+from src.estimation.jgrp2o.preprocessing import get_resize_coeffs, get_uv_offsets, resize_coords
 from src.estimation.jgrp2o.preprocessing_com import ComPreprocessor, crop_to_bcube
 from src.utils.camera import Camera, CameraBighand
 from src.utils.imaging import normalize_to_range, resize_bilinear_nearest
+from src.utils.perlin import perlin_img_noise
 from src.utils.plots import plot_depth_image, plot_image_with_skeleton
 
 
@@ -70,6 +71,9 @@ def preprocess(image, joints, camera: Camera, heatmap_sigma: int, joints_type, c
         cropped_image, cropped_uv = rotate_image_and_joints(cropped_image, cropped_uv, random_angle_stddev)
 
     resized_image, resized_uv = resize_image_and_joints(cropped_image, cropped_uv, image_target_size, bbox)
+
+    resized_image = add_noise(resized_image)
+
     normalized_image, normalized_uvz = normalize_image_and_joints(
         resized_image, resized_uv, joints[:, 2:3], min_z, max_z)
 
@@ -162,6 +166,17 @@ def crop_image_and_joints(crops_center_point, image, uv_coords, camera, cube_siz
     min_z = bcube[2]
     max_z = bcube[5]
     return cropped_image, cropped_joints_uv, bbox, min_z, max_z
+
+
+def add_noise(image):
+    img_shape = tf.shape(image)
+    # Add different types of noise with random amount
+    noise_mask = tf.cast(perlin_img_noise(img_shape), dtype=image.dtype)[:, :, tf.newaxis]
+    image_with_noise = image * noise_mask
+    # The original image's background value may not be 0!
+    # So replace 0 with the maximum value - the farthest distance.
+    image_with_noise = tf.where(image_with_noise == 0, tf.reduce_max(image), image_with_noise)
+    return image_with_noise
 
 
 def rotate_image_and_joints(image, uv_coords, random_angle_stddev):
@@ -334,9 +349,10 @@ def try_preprocessing():
     camera = CameraBighand()
 
     for image, joints in train_iterator:
-        norm_image, (norm_joints, heatmaps) = preprocess(image[0], joints[0], camera, joints_type='xyz',
-                                                         heatmap_sigma=3, cube_size=180, random_angle_stddev=np.pi / 8,
-                                                         shift_stddev=0.05)
+        norm_image, y_dict = preprocess(image[0], joints[0], camera, joints_type='xyz',
+                                        heatmap_sigma=3, cube_size=180, random_angle_stddev=np.pi / 8,
+                                        shift_stddev=0.05)
+        norm_joints = y_dict['joints']
         plot_image_with_skeleton(image[0], camera.world_to_pixel_2d(joints[0]))
         plot_image_with_skeleton(norm_image, norm_joints * 256)
         pass
