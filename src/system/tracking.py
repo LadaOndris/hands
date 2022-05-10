@@ -105,7 +105,7 @@ if __name__ == "__main__":
                           estimator=BlazeposeEstimator(camera, presence_threshold=0.3),
                           keypoints_to_rectangle=KeypointsToRectangleImpl(shift_coeff=0.1),
                           display=display, camera=camera,
-                          gesture_recognizer=SimpleGestureRecognizer(120, 90, 'demo'))
+                          gesture_recognizer=SimpleGestureRecognizer(150, 90, 'demo'))
 
     # while True:
     #     img = depth_image_source.get_new_image()
