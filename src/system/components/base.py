@@ -1,5 +1,8 @@
 from abc import ABC, abstractmethod
 
+import numpy as np
+from acceptance.gesture_acceptance_result import GestureAcceptanceResult
+
 
 class ImageSource(ABC):
 
@@ -41,5 +44,12 @@ class KeypointsToRectangle(ABC):
 class Display(ABC):
 
     @abstractmethod
-    def update(self, image, keypoints=None, bounding_boxes=None):
+    def update(self, image, keypoints=None, bounding_boxes=None, gesture_label: str = None):
+        pass
+
+
+class GestureRecognizer(ABC):
+
+    @abstractmethod
+    def recognize(self, keypoints_xyz: np.ndarray) -> GestureAcceptanceResult:
         pass

@@ -1,5 +1,7 @@
 import tensorflow as tf
 
+from detection.blazeface.utils.train_utils import shift_depth
+from estimation.blazepose.data.preprocessing import add_noise
 from src.datasets.handseg150k.dataset_bboxes import HandsegDatasetBboxes
 from src.datasets.simple_boxes.dataset_bboxes import SimpleBoxesDataset
 from src.detection.blazeface.model import build_blaze_face
@@ -11,7 +13,7 @@ from src.utils.paths import HANDSEG_DATASET_DIR, LOGS_DIR, SIMPLE_DATASET_DIR
 hyper_params = train_utils.get_hyper_params()
 model = build_blaze_face(hyper_params['detections_per_layer'], channels=1)
 print(model.summary(line_length=150))
-model.load_weights(LOGS_DIR.joinpath('20210816-123035/train_ckpts/weights.88.h5'))
+model.load_weights(LOGS_DIR.joinpath('20211120-142355/train_ckpts/weights.78.h5'))
 # dataset = TvhandDataset(TVHAND_DATASET_DIR, out_img_size=hyper_params['img_size'], batch_size=1)
 # dataset = SimpleBoxesDataset(SIMPLE_DATASET_DIR, train_size=0.8,
 #                             img_size=[hyper_params['img_size'], hyper_params['img_size']], batch_size=1)
@@ -24,7 +26,10 @@ prior_boxes = bbox_utils.generate_prior_boxes(hyper_params['feature_map_shapes']
                                               hyper_params['aspect_ratios'])
 
 for image, boxes in dataset.test_dataset:
-    pred_deltas, pred_scores = model(image)
+    image_with_noise = add_noise(image[0])
+    image_preprocessed = shift_depth(image_with_noise, min_shift=200, max_shift=300)[tf.newaxis, ...]
+
+    pred_deltas, pred_scores = model(image_preprocessed)
     # pred_deltas *= hyperparams['variances']
 
     actual_deltas, actual_labels = train_utils.calculate_expected_outputs(prior_boxes, boxes, hyper_params)
@@ -45,5 +50,5 @@ for image, boxes in dataset.test_dataset:
     #                                                     hyper_params['img_size'])
     # # plot_predictions(image[0], denormalized_bboxes[0], None)
     # # denormalized_bboxes = denormalized_bboxes[tf.newaxis, ...]
-    draw_bboxes(image, weighted_bboxes[tf.newaxis, ...])
+    draw_bboxes(image_preprocessed, weighted_bboxes[tf.newaxis, ...])
     pass

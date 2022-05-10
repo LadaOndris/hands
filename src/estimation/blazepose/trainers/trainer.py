@@ -95,11 +95,11 @@ def train(config, batch_size, verbose, weights=None):
                                                   generate_random_crop_prob=train_config['generate_random_crop_prob'],
                                                   random_angle_stddev=train_config['random_angle_stddev'],
                                                   shift_stddev=train_config['shift_stddev'])
-    ds = BighandDataset(BIGHAND_DATASET_DIR, test_subject="Subject_8", batch_size=batch_size,
+    ds = BighandDataset(BIGHAND_DATASET_DIR, test_subject="Subject_7", batch_size=batch_size,
                         shuffle=True, prepare_output_fn=prepare_fn)
 
     steps_per_epoch = min(5000, ds.num_train_batches)
-    validation_steps = min(steps_per_epoch * 0.1, ds.num_test_batches)
+    validation_steps = min(steps_per_epoch * 0.05, ds.num_test_batches)
 
     lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(initial_learning_rate=train_config["learning_rate"],
                                                                  decay_steps=steps_per_epoch,
@@ -163,7 +163,7 @@ if __name__ == "__main__":
     if args.type == 'heatmap':
         weights = train(heatmap_config, batch_size=args.batch_size, verbose=args.verbose, weights=args.weights)
     elif args.type == 'regress':
-        train(heatmap_config, batch_size=args.batch_size, verbose=args.verbose, weights=args.weights)
+        train(regress_config, batch_size=args.batch_size, verbose=args.verbose, weights=args.weights)
     elif args.type == 'both':
         weights = train(heatmap_config, batch_size=args.batch_size, verbose=args.verbose, weights=args.weights)
         train(regress_config, batch_size=args.batch_size, verbose=args.verbose, weights=weights)

@@ -1,5 +1,6 @@
 import tensorflow as tf
 
+from estimation.blazepose.data.preprocessing import add_noise
 from src.utils import bbox_utils
 
 
@@ -32,15 +33,41 @@ def get_hyper_params(**kwargs):
 def prepare_expected_output_fn(prior_boxes, hyper_params):
     @tf.function
     def _prepare_output(image, boxes):
+        image_with_noise = add_noise(image)
+        image_preprocessed = shift_depth(image_with_noise)
+
         # Add batch dimension
         boxes = tf.expand_dims(boxes, axis=0)
 
         deltas, labels = calculate_expected_outputs(prior_boxes, boxes, hyper_params)
+
         # We are preparing a single sample -> remove the batch axis.
         deltas = tf.squeeze(deltas, axis=0)
         labels = tf.squeeze(labels, axis=0)
-        return image, (deltas, labels)
+
+        return image_preprocessed, (deltas, labels)
     return _prepare_output
+
+
+def shift_depth(image, min_shift=-150, max_shift=150):
+    """
+
+    image
+    min_shift Value in mm to add to the image
+    max_shift Value in mm to add to the image
+
+    Returns
+    -------
+    """
+    shape = tf.ones([tf.rank(image)], dtype=tf.int32)
+    random_shift = tf.random.uniform(shape, minval=min_shift, maxval=max_shift)
+    # Shift all values in the image
+    shifted_image = image + random_shift
+    # Crop values below 0 and leave 0 where they were
+    shifted_cleaned_image = tf.where((shifted_image < 0) | (shifted_image == random_shift),
+                                     0, shifted_image)
+    return shifted_cleaned_image
+
 
 def calculate_expected_outputs(prior_boxes, gt_boxes, hyper_params):
     """Calculate ssd actual output values.

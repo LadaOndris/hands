@@ -1,14 +1,14 @@
 import argparse
 
 from src.system.database.scanner import UsecaseDatabaseScanner
-from src.utils.camera import Camera
+from src.utils.camera import get_camera
 
 parser = argparse.ArgumentParser()
-parser.add_argument('directory', type=str, action='store',
+parser.add_argument('directory', type=str, action='store', required=True,
                     help='the name of the directory that should contain the user-captured gesture database')
-parser.add_argument('label', type=str, action='store',
+parser.add_argument('label', type=str, action='store', required=True,
                     help='the label of the gesture that is to be captured')
-parser.add_argument('count', type=int, action='store',
+parser.add_argument('count', type=int, action='store', required=True,
                     help='the number of samples to scan')
 
 parser.add_argument('--scan-period', type=float, action='store', default=1.0,
@@ -20,5 +20,5 @@ parser.add_argument('--hide-plot', action='store_true', default=False,
 args = parser.parse_args()
 
 plot = not args.hide_plot
-scanner = UsecaseDatabaseScanner(args.directory, camera=Camera(args.camera), plot_estimation=plot)
+scanner = UsecaseDatabaseScanner(args.directory, camera=get_camera(args.camera), plot_estimation=plot)
 scanner.scan_into_subdir(args.label, args.count, scan_period=args.scan_period)

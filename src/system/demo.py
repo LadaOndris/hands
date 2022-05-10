@@ -17,7 +17,7 @@ from src.utils.debugging import timing
 from src.utils.imaging import average_nonzero_depth
 
 
-class GestureRecognizer:
+class ModifiedLiveGestureRecognizer:
 
     def __init__(self, error_thresh: int, orientation_thresh: int, database_subdir: str, camera_name: str,
                  plot_result=True, plot_feedback=False, plot_orientation=True, plot_hand_only=False):

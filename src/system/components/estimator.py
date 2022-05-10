@@ -17,7 +17,8 @@ from src.utils.paths import OTHER_DIR, ROOT_DIR, SRC_DIR
 
 class BlazeposeEstimator(Estimator):
 
-    def __init__(self, camera: Camera):
+    def __init__(self, camera: Camera, presence_threshold: float = 0.5):
+        self.presence_threshold = presence_threshold
         config_path = SRC_DIR.joinpath('estimation/blazepose/configs/config_blazepose.json')
         with open(config_path, 'r') as f:
             config = json.load(f)
@@ -44,7 +45,7 @@ class BlazeposeEstimator(Estimator):
         # self._save_image(normalized_images_batch[0], pred_joints_uvz)  # TODO: DELETE TEMPORARY CODE
         pred_heatmap = pred_heatmap_batch[0]  # heatmap values are in range [0, 1]
         pred_presence = pred_presence_batch[0]  # presence are probabilities for each joint in range [0, 1]
-        present_joints = tf.reduce_sum(tf.cast(pred_presence > 0.5, tf.int32))
+        present_joints = tf.reduce_sum(tf.cast(pred_presence > self.presence_threshold, tf.int32))
         # tf.print("Present joints: ", present_joints)
         hand_presence = present_joints >= 10
         joints_uvz = self.postprocess(pred_joints_uvz, crop_offset_uv)

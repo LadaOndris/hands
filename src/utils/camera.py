@@ -215,3 +215,16 @@ class CameraMSRA(Camera):
         super().__init__(focal_length=(241.42, 241.42),
                          principal_point=(160, 120),
                          image_size=(320, 240))
+
+
+def get_camera(camera_type: str) -> Camera:
+    camera_type_lower = camera_type.lower()
+    if camera_type_lower == 'sr305':
+        return CameraSR305()
+    if camera_type_lower == 'd105':
+        return CameraD105()
+    if camera_type_lower == 'msra':
+        return CameraMSRA()
+    if camera_type_lower == 'bighand':
+        return CameraBighand()
+    raise RuntimeError(f"Invalid camera type: {camera_type}")

@@ -13,7 +13,7 @@ from src.system.hand_position_estimator import HandPositionEstimator
 from src.utils.camera import Camera
 
 
-class GestureRecognizer:
+class LiveGestureRecognizer:
 
     def __init__(self, error_thresh: int, orientation_thresh: int, database_subdir: str, camera_name: str,
                  plot_result=True, plot_feedback=False, plot_orientation=True):

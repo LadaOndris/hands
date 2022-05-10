@@ -72,7 +72,7 @@ def preprocess(image, joints, camera: Camera, heatmap_sigma: int, joints_type, c
 
     resized_image, resized_uv = resize_image_and_joints(cropped_image, cropped_uv, image_target_size, bbox)
 
-    resized_image = add_noise(resized_image)
+    resized_image = add_noise_to_3d_cropped(resized_image)
 
     normalized_image, normalized_uvz = normalize_image_and_joints(
         resized_image, resized_uv, joints[:, 2:3], min_z, max_z)
@@ -168,14 +168,22 @@ def crop_image_and_joints(crops_center_point, image, uv_coords, camera, cube_siz
     return cropped_image, cropped_joints_uv, bbox, min_z, max_z
 
 
+def add_noise_to_3d_cropped(image):
+    image_with_noise = add_noise(image)
+    # The original image's background value may not be 0!
+    # So replace 0 with the maximum value - the farthest distance.
+    image_with_noise = tf.where(image_with_noise == 0, tf.reduce_max(image), image_with_noise)
+    return image_with_noise
+
+
 def add_noise(image):
+    """
+    Adds perlin noise to image in the form of zeros.
+    """
     img_shape = tf.shape(image)
     # Add different types of noise with random amount
     noise_mask = tf.cast(perlin_img_noise(img_shape), dtype=image.dtype)[:, :, tf.newaxis]
     image_with_noise = image * noise_mask
-    # The original image's background value may not be 0!
-    # So replace 0 with the maximum value - the farthest distance.
-    image_with_noise = tf.where(image_with_noise == 0, tf.reduce_max(image), image_with_noise)
     return image_with_noise
 
 

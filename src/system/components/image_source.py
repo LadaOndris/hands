@@ -11,11 +11,12 @@ from src.utils.live import get_depth_unit
 
 class RealSenseCameraWrapper:
 
-    def __init__(self, enable_depth: bool, enable_color: bool, ):
+    def __init__(self, enable_depth: bool, enable_color: bool):
         if not enable_color and not enable_depth:
             raise ValueError('Both color and depth cannot be disabled.')
         self.is_depth_enabled = enable_depth
         self.is_color_enabled = enable_color
+        self.preset_name = "Default"
 
         self.pipeline, self.profile = self.start_pipeline()
 
@@ -35,27 +36,37 @@ class RealSenseCameraWrapper:
             # Set Hand preset
             depth_sensor = profile.get_device().first_depth_sensor()
 
-            # if camera is not SR305, which does not support the following settings
-            camera_name = profile.get_device().get_info(rs.camera_info.name)
-            if "SR305" not in camera_name:
-                # Set auto exposure to avoid overexposure or underexposure
-                depth_sensor.set_option(rs.option.enable_auto_exposure, True)
-
-                # Set disparity shift
-                device = rs.context().query_devices()[0]
-                advnc_mode = rs.rs400_advanced_mode(device)
-                depth_table_control_group = advnc_mode.get_depth_table()
-                depth_table_control_group.disparityShift = 20
-                advnc_mode.set_depth_table(depth_table_control_group)
-
+            # Set preset
             preset_range = depth_sensor.get_option_range(rs.option.visual_preset)
             print('preset range:' + str(preset_range))
             for i in range(int(preset_range.max)):
                 visulpreset = depth_sensor.get_option_value_description(rs.option.visual_preset, i)
                 print('%02d: %s' % (i, visulpreset))
-                if visulpreset == "Hand":
+                if visulpreset == self.preset_name:
                     depth_sensor.set_option(rs.option.visual_preset, i)
                     break
+
+            # if camera is not SR305, which does not support the following settings
+            camera_name = profile.get_device().get_info(rs.camera_info.name)
+            if "SR305" not in camera_name:
+                # Set disparity shift
+                device = rs.context().query_devices()[0]
+                advnc_mode = rs.rs400_advanced_mode(device)
+                depth_table_control_group = advnc_mode.get_depth_table()
+                depth_table_control_group.disparityShift = 0
+                advnc_mode.set_depth_table(depth_table_control_group)
+                rsm = advnc_mode.get_rsm()
+                rsm.removeThresh = 100
+                advnc_mode.set_rsm(rsm)
+
+                # Set auto exposure to avoid overexposure or underexposure
+                depth_sensor.set_option(rs.option.enable_auto_exposure, True)
+
+                # Set maximum laser power
+                laser_range = depth_sensor.get_option_range(rs.option.laser_power)
+                depth_sensor.set_option(rs.option.laser_power, laser_range.max)
+
+
 
         return pipeline, profile
 
@@ -167,6 +178,7 @@ class DepthRealSenseImageSource(ImageSource):
         depth_image = depth_image.astype(np.uint16)
         depth_image = crop_to_equal_dims(depth_image)
         self.previous_image = depth_image
+        print(np.min(depth_image[depth_image > 0]))
         return depth_image
 
     def get_previous_image(self):
