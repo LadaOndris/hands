@@ -48,7 +48,7 @@ class UsecaseDatabaseReader:
 
         for file, label in zip(files, labels):
             try:
-                joints_flattened = np.genfromtxt(file, dtype=np.float, delimiter=' ')  # (lines, 63)
+                joints_flattened = np.genfromtxt(file, dtype=float, delimiter=' ')  # (lines, 63)
                 joints_arr = np.reshape(joints_flattened, [joints_flattened.shape[0], -1, 3])
             except ValueError:
                 # Skip invalid files.. empty or worse.
@@ -84,5 +84,5 @@ class UsecaseDatabaseReader:
 
 if __name__ == "__main__":
     reader = UsecaseDatabaseReader()
-    reader.load_from_subdir('test')
+    reader.load_from_subdir('demo')
     pass
