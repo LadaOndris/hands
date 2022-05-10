@@ -76,7 +76,9 @@ class HandTracker:
                     gesture_label = None
                     if self.gesture_recognizer is not None:
                         keypoints_xyz = self.camera.pixel_to_world(keypoints)
-                        gesture_label = self.gesture_recognizer.recognize(keypoints_xyz)
+                        gesture_result = self.gesture_recognizer.recognize(keypoints_xyz)
+                        if gesture_result.is_gesture_valid:
+                            gesture_label = gesture_result.gesture_label
                     self.display.update(image.numpy(), keypoints=keypoints, bounding_boxes=[rectangle],
                                         gesture_label=gesture_label)
                     # yield keypoints.numpy(), normalized_keypoints.numpy(), normalized_image.numpy(), crop_offset_uv.numpy()
@@ -104,6 +106,7 @@ if __name__ == "__main__":
                           keypoints_to_rectangle=KeypointsToRectangleImpl(shift_coeff=0.1),
                           display=display, camera=camera,
                           gesture_recognizer=SimpleGestureRecognizer(120, 90, 'demo'))
+
     # while True:
     #     img = depth_image_source.get_new_image()
     #     display.update(img)

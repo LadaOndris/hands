@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
 
 import numpy as np
-from acceptance.gesture_acceptance_result import GestureAcceptanceResult
+
+from src.acceptance.gesture_acceptance_result import GestureAcceptanceResult
 
 
 class ImageSource(ABC):

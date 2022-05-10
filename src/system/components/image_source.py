@@ -178,7 +178,6 @@ class DepthRealSenseImageSource(ImageSource):
         depth_image = depth_image.astype(np.uint16)
         depth_image = crop_to_equal_dims(depth_image)
         self.previous_image = depth_image
-        print(np.min(depth_image[depth_image > 0]))
         return depth_image
 
     def get_previous_image(self):

@@ -1,3 +1,5 @@
+from typing import Tuple
+
 import cv2
 import numpy as np
 
@@ -40,25 +42,37 @@ class OpencvDisplay(Display):
         # Initialize blank mask image of same dimensions for drawing the shapes
         shapes = np.zeros_like(image, np.uint8)
         # Draw shapes
-        cv2.rectangle(shapes, (0, 0), (img_width, 25), (255, 0, 0), cv2.FILLED)
+        bar_height = 35
+        color = self.get_color(gesture_label is not None)
+        cv2.rectangle(shapes, (0, 0), (img_width, bar_height), color, cv2.FILLED)
         # Generate output by blending image with shapes image, using the shapes
         # images also as mask to limit the blending to those parts
-        alpha = 0.7
+        alpha = 0.5
         mask = shapes.astype(bool)
         image[mask] = cv2.addWeighted(image, alpha, shapes, 1 - alpha, 0)[mask]
 
-        if gesture_label is not None:
-            org = (img_width / 2, 10)
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            fontScale = 1
-            color = (0, 0, 0)
-            thickness = 2
-            image = cv2.putText(image, gesture_label, org, font, fontScale,
-                                color, thickness, cv2.LINE_AA, True)
+        if gesture_label is None:
+            gesture_label = "-"
+        org = (int(img_width / 2), bar_height - 8)
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 1
+        color = (240, 240, 240)
+        thickness = 2
+        image = cv2.putText(image, gesture_label, org, font, font_scale,
+                            color, thickness, cv2.LINE_AA, False)
 
         cv2.imshow(self.window_same, image)
         # Don't wait for the user to press a key
         cv2.waitKey(1)
+
+    def get_color(self, exists_label: bool) -> Tuple[int, int, int]:
+        green = (33, 173, 38)
+        blue = (181, 113, 76)
+
+        if exists_label:
+            return green
+        else:
+            return blue
 
 
 if __name__ == "__main__":

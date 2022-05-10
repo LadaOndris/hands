@@ -28,7 +28,7 @@ class SimpleGestureRecognizer(GestureRecognizer):
         keypoints ndarray of 21 keypoints, shape (batch_size, joints, coords)
         """
         result = GestureAcceptanceResult()
-        result.joints_jre = joint_relation_errors(keypoints_xyz, self.gesture_database)
+        result.joints_jre = joint_relation_errors(keypoints_xyz[tf.newaxis, ...], self.gesture_database)
         aggregated_errors = np.sum(result.joints_jre, axis=-1)
         result.predicted_gesture_idx = np.argmin(aggregated_errors, axis=-1)
         result.predicted_gesture = self.gesture_database[result.predicted_gesture_idx, ...]
