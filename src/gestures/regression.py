@@ -22,15 +22,15 @@ def get_trained_model(gestures_folder: str):
     x_flattened = np.reshape(x, [x.shape[0], -1])
     y = y.astype(int)
 
-    # regression = GaussianProcessClassifier(1.0 * RBF(1.0))
-    # regression = DecisionTreeClassifier(max_depth=5)
-    regression = MLPClassifier(max_iter=1000)
-    regression = regression.fit(x_flattened, y)
-    logging.info("Gesture recognition score: ", regression.score(x_flattened, y))
-    return regression
+    # classifier = GaussianProcessClassifier(1.0 * RBF(1.0))
+    # classifier = DecisionTreeClassifier(max_depth=5)
+    classifier = MLPClassifier(max_iter=1000)
+    classifier = classifier.fit(x_flattened, y)
+    logging.info("Gesture recognition score: ", classifier.score(x_flattened, y))
+    return classifier
 
 
-class RegressionGestureRecognizer(GestureRecognizer):
+class ClassifierGestureRecognizer(GestureRecognizer):
 
     def __init__(self, gestures_folder: str):
         self.gesture_model = get_trained_model(gestures_folder)

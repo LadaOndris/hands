@@ -1,19 +1,19 @@
 import argparse
 import time
 
-import tensorflow as tf
 import pyrealsense2 as rs
+import tensorflow as tf
 
-from gestures.regression import get_trained_model, RegressionGestureRecognizer
+from gestures.regression import ClassifierGestureRecognizer
 from src.system.components.base import Detector, Display, Estimator, GestureRecognizer, ImageSource, \
     KeypointsToRectangle
 from src.system.components.detector import BlazehandDetector
 from src.system.components.display import OpencvDisplay
 from src.system.components.estimator import BlazeposeEstimator
+from src.system.components.gestures import SimpleGestureRecognizer
 from src.system.components.image_source import RealSenseCameraWrapper
 from src.system.components.keypoints_to_rectangle import KeypointsToRectangleImpl
 from src.utils.camera import Camera, CameraBighand
-from src.system.components.gestures import SimpleGestureRecognizer
 
 
 class HandTracker:
@@ -33,7 +33,6 @@ class HandTracker:
         self.display = display
         self.camera = camera
         self.gesture_recognizer = gesture_recognizer
-
 
         decimation_filter = rs.decimation_filter()
         decimation_filter.set_option(rs.option.filter_magnitude, 1)
@@ -102,7 +101,7 @@ if __name__ == "__main__":
     display = OpencvDisplay()
     camera = CameraBighand()
     simple_recognizer = SimpleGestureRecognizer(150, 90, 'demo')
-    regression_recognizer = RegressionGestureRecognizer('demo')
+    regression_recognizer = ClassifierGestureRecognizer('demo')
 
     tracker = HandTracker(image_source=depth_image_source,
                           detector=BlazehandDetector(),
