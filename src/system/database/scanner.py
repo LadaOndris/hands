@@ -3,32 +3,31 @@ import os
 import time
 
 import numpy as np
-import tensorflow as tf
 
-from src.system.components.base import Detector, Display, Estimator, ImageSource, KeypointsToRectangle
+from src.system.components import CoordinatePredictor
+from src.system.components.base import Display, ImageSource, KeypointsToRectangle
+from src.system.components.CoordinatePredictor import CustomCoordinatePredictor
+from src.system.components.detector import BlazehandDetector
 from src.system.components.display import OpencvDisplay
+from src.system.components.estimator import BlazeposeEstimator
 from src.system.components.image_source import RealSenseCameraWrapper
-from src.utils.camera import Camera, get_camera
+from src.system.components.keypoints_to_rectangle import KeypointsToRectangleImpl
+from src.utils.camera import get_camera
 from src.utils.logs import get_current_timestamp, make_dir
 from src.utils.paths import USECASE_DATASET_DIR
-from system.components.detector import BlazehandDetector
-from system.components.estimator import BlazeposeEstimator
-from system.components.keypoints_to_rectangle import KeypointsToRectangleImpl
 
 
 class UsecaseDatabaseScanner:
 
     def __init__(self, subdir: str, image_source: ImageSource,
-                 detector: Detector, estimator: Estimator,
+                 predictor: CoordinatePredictor,
                  keypoints_to_rectangle: KeypointsToRectangle,
-                 display: Display, camera: Camera):
+                 display: Display):
         self.subdir = subdir
         self.image_source = image_source
-        self.detector = detector
-        self.estimator = estimator
+        self.predictor = predictor
         self.keypoints_to_rectangle = keypoints_to_rectangle
         self.display = display
-        self.camera = camera
 
         self.subdir_path = USECASE_DATASET_DIR.joinpath(subdir)
 
@@ -52,20 +51,17 @@ class UsecaseDatabaseScanner:
             time_start = time.time()
 
             image = self.image_source.get_new_image()
-            image = tf.convert_to_tensor(image)
+            prediction = self.predictor.predict(image)
 
-            rectangle = self.detector.detect(image)[0]
-            if not tf.experimental.numpy.allclose(rectangle, 0):
-                hand_presence_flag, keypoints_uvz, normalized_keypoints_uvz, normalized_image, crop_offset_uv = \
-                    self.estimator.estimate(image, rectangle)
-                if hand_presence_flag:
-                    rectangle = self.keypoints_to_rectangle.convert(keypoints_uvz)
-                    self.display.update(image.numpy(), keypoints=keypoints_uvz, bounding_boxes=[rectangle])
+            if prediction is not None:
+                rectangle = self.keypoints_to_rectangle.convert(prediction.image_coordinates)
+                self.display.update(image,
+                                    keypoints=prediction.image_coordinates,
+                                    bounding_boxes=[rectangle])
 
-                    keypoints_xyz = self.camera.pixel_to_world(keypoints_uvz)
-                    self._save_joints_to_file(file, keypoints_xyz)
-                    self._wait_till_period(time_start, scan_period)
-                    count += 1
+                self._save_joints_to_file(file, prediction.world_coordinates)
+                self._wait_till_period(time_start, scan_period)
+                count += 1
 
     def _prepare_file(self, gesture_label):
         if '_' in gesture_label:
@@ -119,11 +115,13 @@ if __name__ == "__main__":
     depth_image_source = realsense_wrapper.get_depth_image_source()
     display = OpencvDisplay()
     camera = get_camera(args.camera)
+    predictor = CustomCoordinatePredictor(detector=BlazehandDetector(),
+                                          estimator=BlazeposeEstimator(camera, presence_threshold=0.3),
+                                          camera=camera)
 
     scanner = UsecaseDatabaseScanner(subdir=args.directory,
                                      image_source=depth_image_source,
-                                     detector=BlazehandDetector(),
-                                     estimator=BlazeposeEstimator(camera, presence_threshold=0.3),
+                                     predictor=predictor,
                                      keypoints_to_rectangle=KeypointsToRectangleImpl(shift_coeff=0.1),
-                                     display=display, camera=camera)
+                                     display=display)
     scanner.scan_into_subdir(args.label, args.count, scan_period=args.scan_period)
