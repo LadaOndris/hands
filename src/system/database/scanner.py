@@ -6,11 +6,11 @@ import numpy as np
 
 from src.system.components import CoordinatePredictor
 from src.system.components.base import Display, ImageSource, KeypointsToRectangle
-from src.system.components.CoordinatePredictor import CustomCoordinatePredictor
+from src.system.components.CoordinatePredictor import CustomCoordinatePredictor, MediapipeCoordinatePredictor
 from src.system.components.detector import BlazehandDetector
 from src.system.components.display import OpencvDisplay
 from src.system.components.estimator import BlazeposeEstimator
-from src.system.components.image_source import RealSenseCameraWrapper
+from src.system.components.image_source import DefaultVideoCaptureSource, RealSenseCameraWrapper
 from src.system.components.keypoints_to_rectangle import KeypointsToRectangleImpl
 from src.utils.camera import get_camera
 from src.utils.logs import get_current_timestamp, make_dir
@@ -54,10 +54,7 @@ class UsecaseDatabaseScanner:
             prediction = self.predictor.predict(image)
 
             if prediction is not None:
-                rectangle = self.keypoints_to_rectangle.convert(prediction.image_coordinates)
-                self.display.update(image,
-                                    keypoints=prediction.image_coordinates,
-                                    bounding_boxes=[rectangle])
+                self.display.update(image, keypoints=prediction.image_coordinates)
 
                 self._save_joints_to_file(file, prediction.world_coordinates)
                 self._wait_till_period(time_start, scan_period)
@@ -99,8 +96,8 @@ def parse_args():
 
     parser.add_argument('--scan-period', type=float, action='store', default=1.0,
                         help='intervals between each capture in seconds (default: 1)')
-    parser.add_argument('--camera', type=str, action='store', default='SR305',
-                        help='the camera model in use for live capture (default: SR305)')
+    parser.add_argument('--camera', type=str, action='store', default=None,
+                        help='the camera model in use for live capture (default: None -> VideoCapture(0) is selected)')
     parser.add_argument('--hide-plot', action='store_true', default=False,
                         help='hide plots of the captured poses - not recommended')
     args = parser.parse_args()
@@ -111,16 +108,23 @@ if __name__ == "__main__":
     args = parse_args()
     plot = not args.hide_plot
 
-    realsense_wrapper = RealSenseCameraWrapper(enable_depth=True, enable_color=False)
-    depth_image_source = realsense_wrapper.get_depth_image_source()
     display = OpencvDisplay()
-    camera = get_camera(args.camera)
-    predictor = CustomCoordinatePredictor(detector=BlazehandDetector(),
-                                          estimator=BlazeposeEstimator(camera, presence_threshold=0.3),
-                                          camera=camera)
+
+    if args.camera is None:
+        # Uses color camera and MediaPipe tracker
+        image_source = DefaultVideoCaptureSource()
+        predictor = MediapipeCoordinatePredictor()
+    else:
+        # Uses depth camera and custom-trained neural nets
+        realsense_wrapper = RealSenseCameraWrapper(enable_depth=True, enable_color=False)
+        image_source = realsense_wrapper.get_depth_image_source()
+        camera = get_camera(args.camera)
+        predictor = CustomCoordinatePredictor(detector=BlazehandDetector(),
+                                              estimator=BlazeposeEstimator(camera, presence_threshold=0.3),
+                                              camera=camera)
 
     scanner = UsecaseDatabaseScanner(subdir=args.directory,
-                                     image_source=depth_image_source,
+                                     image_source=image_source,
                                      predictor=predictor,
                                      keypoints_to_rectangle=KeypointsToRectangleImpl(shift_coeff=0.1),
                                      display=display)

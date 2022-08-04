@@ -153,14 +153,20 @@ optional arguments:
 
 #### Preparation of gesture database
 
-Beware: the preparation of gesture database requires a depth camera. 
+Beware: the preparation of gesture database requires either a depth or color camera. 
 You can **skip this section** because there is already a database 
 called `gestures` available.
 
 To capture a gesture with label `1` into a `gestures` directory with a scan
 period of one second and SR305 camera:  
 ```
-python3 database.py gestures 1 10
+python3 database.py gestures 1 10 --camera SR305
+```
+
+To capture a gesture with label `hi` into a `color` directory with a scan 
+period of one second and color camera:
+```
+python3 database.py color hi 10
 ```
 
 ```
