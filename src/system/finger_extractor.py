@@ -32,6 +32,7 @@ class CoordsConvertor:
             hulls[i] = color_pixels.astype(int)
         return hulls
 
+
 def get_contour_depth(depth_image, contour):
     # Create each finger's mask
     mask = np.zeros(depth_image.shape, np.uint8)
@@ -59,14 +60,17 @@ def postprocess_contours(contours_in_cropped):
         contours_with_depth.append(contour_with_depth)
     return contours_with_depth
 
+
 def get_farthest_point(point_from, points):
     pass
+
 
 def find_finger_tips(contours):
     tips = []
     for contour in contours:
         pass
     return tips
+
 
 if __name__ == "__main__":
     realsense_wrapper = RealSenseCameraWrapper(enable_depth=True, enable_color=True)

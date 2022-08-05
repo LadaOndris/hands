@@ -1,54 +1,68 @@
 import argparse
 
-from src.acceptance.gesture_acceptance_result import GestureRecognitionResult
-from src.datasets.generators import get_source_generator
-from src.system.demo import GestureRecognizer
+import pyrealsense2 as rs
+
+from src.gestures.regression import ClassifierGestureRecognizer
+from src.system.components.CoordinatePredictor import MediapipeCoordinatePredictor, TrackingCoordinatePredictor
+from src.system.components.detector import BlazehandDetector
+from src.system.components.display import OpencvDisplay
+from src.system.components.estimator import BlazeposeEstimator
+from src.system.components.gestures import SimpleGestureRecognizer
+from src.system.components.image_source import DefaultVideoCaptureSource, RealSenseCameraWrapper
+from src.system.components.keypoints_to_rectangle import KeypointsToRectangleImpl
+from src.utils.camera import get_camera
+from system.live_gesture_recognizer import LiveGestureRecognizer
 
 
-def print_result(result: GestureRecognitionResult):
-    if not result.is_gesture_valid:
-        result.gesture_label = '---'
+def get_depth_filters():
+    decimation_filter = rs.decimation_filter()
+    decimation_filter.set_option(rs.option.filter_magnitude, 1)
 
-    print(F"Gesture: {result.gesture_label}\t")
-    # F"JRE: {result.gesture_jre}\t"
-    # F"Orient. diff: {result.angle_difference:.2f}")
+    spatial_filter = rs.spatial_filter()
+    spatial_filter.set_option(rs.option.filter_magnitude, 2)
+    spatial_filter.set_option(rs.option.filter_smooth_alpha, 0.5)
+    spatial_filter.set_option(rs.option.filter_smooth_delta, 20)
+    spatial_filter.set_option(rs.option.holes_fill, 1)
+
+    postprocessing_filters = [
+        spatial_filter
+    ]
+    return postprocessing_filters
 
 
-parser = argparse.ArgumentParser()
-parser.add_argument('source', type=str, action='store',
-                    help='the source of images (allowed options: live, dataset)')
-parser.add_argument('directory', type=str, action='store',
-                    help='the name of the directory containg the user-captured gesture database')
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument('directory', type=str, action='store',
+                        help='the name of the directory containg the user-captured gesture database')
+    parser.add_argument('--camera', type=str, action='store', default=None,
+                        help='the camera model in use for live capture (default: None -> VideoCapture(0) is selected)')
+    parser.add_argument('--error-threshold', type=int, action='store', default=150,
+                        help='the pose (JRE) threshold (default: 120)')
+    parser.add_argument('--orientation-threshold', type=int, action='store', default=90,
+                        help='the orientation threshold in angles (maximum: 90, default: 90)')
+    args = parser.parse_args()
 
-parser.add_argument('--error-threshold', type=int, action='store', default=120,
-                    help='the pose (JRE) threshold (default: 120)')
-parser.add_argument('--orientation-threshold', type=int, action='store', default=90,
-                    help='the orientation threshold in angles (maximum: 90, default: 90)')
-parser.add_argument('--camera', type=str, action='store', default='SR305',
-                    help='the camera model in use for live capture (default: SR305)')
-parser.add_argument('--plot', action='store_true', default=False,
-                    help='plot the result of gesture recognition')
-parser.add_argument('--plot-hand-only', action='store_true', default=False,
-                    help='plot only the cropped section of the image containing a hand')
-parser.add_argument('--hide-feedback', action='store_true', default=False,
-                    help='hide the colorbar with JRE errors')
-parser.add_argument('--hide-orientation', action='store_true', default=False,
-                    help='hide the vector depicting the hand\'s orientation')
-args = parser.parse_args()
+    if args.camera is None:
+        # Uses color camera and MediaPipe tracker
+        image_source = DefaultVideoCaptureSource()
+        predictor = MediapipeCoordinatePredictor()
+    else:
+        # Uses depth camera and custom-trained neural nets
+        realsense_wrapper = RealSenseCameraWrapper(enable_depth=True, enable_color=False,
+                                                   filters=get_depth_filters())
+        image_source = realsense_wrapper.get_depth_image_source()
+        camera = get_camera(args.camera)
+        predictor = TrackingCoordinatePredictor(detector=BlazehandDetector(),
+                                                estimator=BlazeposeEstimator(camera, presence_threshold=0.3),
+                                                keypoints_to_rectangle=KeypointsToRectangleImpl(shift_coeff=0.1),
+                                                camera=camera)
 
-plot_feedback = not args.hide_feedback
-plot_orientation = not args.hide_orientation
+    display = OpencvDisplay()
+    simple_recognizer = SimpleGestureRecognizer(args.error_threshold, args.orientation_threshold, args.directory)
+    regression_recognizer = ClassifierGestureRecognizer(args.directory)
 
-image_source = get_source_generator(args.source)
-live_acceptance = GestureRecognizer(error_thresh=args.error_threshold,
-                                    orientation_thresh=args.orientation_threshold,
-                                    database_subdir=args.directory,
-                                    plot_result=args.plot,
-                                    plot_feedback=plot_feedback,
-                                    plot_orientation=plot_orientation,
-                                    plot_hand_only=args.plot_hand_only,
-                                    camera_name=args.camera)
-recognizer = live_acceptance.start(image_source)
-for result in recognizer:
-    print_result(result)
-    print()
+    live_recognizer = LiveGestureRecognizer(image_source=image_source,
+                                            predictor=predictor,
+                                            display=display,
+                                            gesture_recognizer=regression_recognizer)
+    live_recognizer.start()

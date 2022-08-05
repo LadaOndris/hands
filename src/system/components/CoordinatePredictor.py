@@ -30,6 +30,11 @@ class CoordinatePredictor(ABC):
 
 
 class TrackingCoordinatePredictor(CoordinatePredictor):
+    """
+    TrackingCoordinatePredictor combines hand detection and pose estimation into a single system.
+    Estimation is performed only if there is a detected hand, and
+    detection is not enabled unless there is no hand being tracked.
+    """
 
     def __init__(self, detector: Detector, estimator: Estimator,
                  keypoints_to_rectangle: KeypointsToRectangle, camera: Camera):

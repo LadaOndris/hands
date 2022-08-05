@@ -4,9 +4,6 @@ Author: Ladislav Ondris
 
 This project performs gesture recognition from depth images. 
 It consists of hand detection, hand pose estimation, and gesture classification.
-Hands are detected using a Tiny YOLOv3 model.
-The gesture recognition system then uses a JGR-P2O hand pose estimator
-to determine the hands' skeleton, which is used for gesture classification.
 
 
 See demonstration videos, which are located in the `docs/` directory.
@@ -14,7 +11,10 @@ See demonstration videos, which are located in the `docs/` directory.
 ## Prerequisites
 
 Python 3.7.10  
-Intel RealSense SR305 depth camera - for live capture
+
+* Intel RealSense SR305 depth camera,
+* or any color camera
+
 
 ## Installation
 
@@ -32,66 +32,6 @@ pip install gast==0.3.3
 
 ## Usage examples
 
-The following examples use mostly '**live**' option as the source of images.
-You can use the '**dataset**' **option instead**. Although the custom dataset is not part of the 
-repository, as its size too big, a few images were included for demonstration purposes.
-
-### Hand detection
-
-To detect both hands from images captured with SR305 camera (as the default option):  
-```
-python3 detect.py live --num-detections 2 --plot
-```
-
-<p float="left">
-    <img src="./docs/readme/live_detection.png" alt="live_detection" width="220"/>
-    <img src="./docs/readme/live_detection2.png" alt="live_detection2" width="220"/>
-</p> 
-
-```
-usage: detect.py [-h] [--camera CAMERA] [--num-detections NUM_DETECTIONS]
-                 [--plot]
-                 source
-
-positional arguments:
-  source                the source of images (allowed options: live, dataset)
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --camera CAMERA       the camera model in use for live capture (default:
-                        SR305)
-  --num-detections NUM_DETECTIONS
-                        the maximum number of bounding boxes for hand
-                        detection (default: 1)
-  --plot                plot the result of detection
-```
-
-### Hand pose estimation
-
-To estimate hand poses from images captured with SR305 camera:  
-```
-python3 estimate.py live --plot
-```
-
-<p float="left">
-    <img src="./docs/readme/live_estimation.png" alt="live_estimation" width="220"/>
-    <img src="./docs/readme/live_estimation2.png" alt="live_estimation2" width="220"/>
-</p>
-
-```
-usage: estimate.py [-h] [--camera CAMERA] [--plot] source
-
-positional arguments:
-  source           the source of images (allowed options: live, dataset)
-
-optional arguments:
-  -h, --help       show this help message and exit
-  --camera CAMERA  the camera model in use for live capture (default: SR305)
-  --plot           plot the result of estimation
-```
-
-### System's usage
-
 The system requires that the user defines the gesture to be recognized, which
 is described in Section *Preparation of gesture database*. For demonstration purposes,
 the gesture database is already prepared for the gesture with an opened palm, 
@@ -100,77 +40,49 @@ fingers outstretched and apart.
 The usage of the real-time recognition from live images or from the custom dataset is shown in 
 *Real-time gesture recognition*.
 
-#### Real-time gesture recognition
+### Real-time gesture recognition
 
-**For demonstration**, the directory named "gestures" is already present,
-containing definitions for a gesture with an opened palm, fingers outstretched
-and apart.  
+**For demonstration**, the directory named `color` is already present,
+containing several representative gestures.
 
 To start the gesture recognition system using gesture database stored in 
-the `gestures` directory:  
-```
-python3 recognize.py live gestures --plot
-```
+the `color` directory:  
 
-To start the gesture recognition from the evaluation dataset:  
 ```
-python3 recognize.py dataset gestures --plot
+python3 recognize.py color
 ```
 
 The system plots figures similar to the following:  
 <p float="left">
-    <img src="./docs/readme/live_gesture1.png" alt="live_gesture1" width="220"/>
-    <img src="./docs/readme/live_nongesture.png" alt="live_nongesture" width="220"/>
+    <img src="./docs/readme/" alt="live_gesture1" width="220"/>
+    <img src="./docs/readme/" alt="live_nongesture" width="220"/>
 </p>
 
-```
-usage: recognize.py [-h] [--error-threshold ERROR_THRESHOLD]
-                    [--orientation-threshold ORIENTATION_THRESHOLD]
-                    [--camera CAMERA] [--plot] [--hide-feedback]
-                    [--hide-orientation]
-                    source directory
 
-positional arguments:
-  source                the source of images (allowed options: live, dataset)
-  directory             the name of the directory containg the user-captured
-                        gesture database
-
-optional arguments:
-  -h, --help            show this help message and exit
-  --error-threshold ERROR_THRESHOLD
-                        the pose (JRE) threshold (default: 120)
-  --orientation-threshold ORIENTATION_THRESHOLD
-                        the orientation threshold in angles (maximum: 90,
-                        default: 90)
-  --camera CAMERA       the camera model in use for live capture (default:
-                        SR305)
-  --plot                plot the result of gesture recognition
-  --hide-feedback       hide the colorbar with JRE errors
-  --hide-orientation    hide the vector depicting the hand's orientation
-```
-
-
-
-#### Preparation of gesture database
+### Preparation of gesture database
 
 Beware: the preparation of gesture database requires either a depth or color camera. 
 You can **skip this section** because there is already a database 
-called `gestures` available.
+called `color` and `depth` available. Both databases contain six gestures---numbers 0 through 5.
 
-To capture a gesture with label `1` into a `gestures` directory with a scan
+The database scanner uses predictor of hand keypoints and writes them
+in a file. The captured poses then serve as representatives of that gesture.
+The database is then used by `live_gesture_recognizer.py`.
+
+To capture a gesture with label `1` into a `gesturesdb` directory with a scan
 period of one second and SR305 camera:  
 ```
-python3 database.py gestures 1 10 --camera SR305
+python3 database.py gesturesdb 1 10 --camera SR305
 ```
 
-To capture a gesture with label `hi` into a `color` directory with a scan 
+To capture a gesture with label `hi` into a `colordb` directory with a scan 
 period of one second and color camera:
 ```
-python3 database.py color hi 10
+python3 database.py colordb hi 10
 ```
 
 ```
-usage: database.py [-h] [--scan-period SCAN_PERIOD] [--camera CAMERA]
+usage: scan_database.py [-h] [--scan-period SCAN_PERIOD] [--camera CAMERA]
                    [--hide-plot]
                    directory label count
 
@@ -188,6 +100,42 @@ optional arguments:
                         SR305)
   --hide-plot           hide plots of the captured poses - not recommended
 ```
+
+## Hand tracking solutions
+
+### Color-based
+
+Uses **Mediapipe** hands solution from Google (https://google.github.io/mediapipe/solutions/hands.html).
+
+### Depth-based
+
+Uses custom-trained networks—**Blazeface** hand detector, and **Blazepose** hand pose estimator.
+
+
+
+## Gestures
+
+Gesture classifiers are located in `src/gestures` directory.
+
+Captured gesture database can be visualized using t-SNE or LDA using the `visualization.py` script.
+
+The `classifiers.py` evaluates many classifiers from sklearn library to see,
+which performs best on the given captured gestures.
+
+The `regression.py` trains an MLPClassifier on the given gesture database
+and later the trained model is used as a gesture recognizer. 
+
+### Which gesture recognizer should be used?
+
+Two main options exist:
+* Either use "SimpleGestureRecognizer", which was 
+created as the first gesture recognizer. It requires proper setting of thresholds.
+* The other option is a **classifier**. One can use any classifier from the sklearn library.
+`regression.py` contains a ready-to-use MLPClassifier, which is the preferred way 
+of gesture recognition for higher accuracy. That said, from its nature it can't
+provide any feedback on which fingers are wrongly placed.
+
+
 
 ## Project structure
 
@@ -225,28 +173,6 @@ optional arguments:
     ├── system                   # Access point to gesture recognition system 
     │                              (database_scanner, gesture_recognizer, hand_position_estimator)
     └── utils                    # Camera, logs, plots, live capture, config
-## Gestures
-
-Gesture classifiers are located in `src/gestures` directory.
-
-Captured gesture database can be visualized using t-SNE or LDA using the `visualization.py` script.
-
-The `classifiers.py` evaluates many classifiers from sklearn library to see,
-which performs best on the given captured gestures.
-
-The `regression.py` trains an MLPClassifier on the given gesture database
-and later predicts using the trained model.
-
-### Which gesture recognizer should be used?
-
-There two main optinos:
-* Either use "SimpleGestureRecognizer", which was created 
-created as the first gesture recognizer. It requires proper setting of thresholds.
-* The other option is a classifier. One can use any recognizer from sklearn library.
-`regression.py` contains a ready-to-use MLPClassifier, which is the preferred way 
-of gesture recognition for higher accuracy. That said, from its nature it can't
-provide any feedback on which fingers are wrongly placed.
-
 
 ## License
 
