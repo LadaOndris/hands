@@ -6,7 +6,7 @@ import numpy as np
 
 from src.system.components import CoordinatePredictor
 from src.system.components.base import Display, ImageSource, KeypointsToRectangle
-from src.system.components.CoordinatePredictor import CustomCoordinatePredictor, MediapipeCoordinatePredictor
+from src.system.components.CoordinatePredictor import TrackingCoordinatePredictor, MediapipeCoordinatePredictor
 from src.system.components.detector import BlazehandDetector
 from src.system.components.display import OpencvDisplay
 from src.system.components.estimator import BlazeposeEstimator
@@ -119,9 +119,10 @@ if __name__ == "__main__":
         realsense_wrapper = RealSenseCameraWrapper(enable_depth=True, enable_color=False)
         image_source = realsense_wrapper.get_depth_image_source()
         camera = get_camera(args.camera)
-        predictor = CustomCoordinatePredictor(detector=BlazehandDetector(),
-                                              estimator=BlazeposeEstimator(camera, presence_threshold=0.3),
-                                              camera=camera)
+        predictor = TrackingCoordinatePredictor(detector=BlazehandDetector(),
+                                                estimator=BlazeposeEstimator(camera, presence_threshold=0.3),
+                                                keypoints_to_rectangle=KeypointsToRectangleImpl(shift_coeff=0.1),
+                                                camera=camera)
 
     scanner = UsecaseDatabaseScanner(subdir=args.directory,
                                      image_source=image_source,

@@ -10,7 +10,7 @@ from system.components.display import OpencvDisplay
 from system.components.estimator import BlazeposeEstimator
 from system.components.image_source import RealSenseCameraWrapper
 from system.components.keypoints_to_rectangle import KeypointsToRectangleImpl
-from system.tracking import HandTracker
+from system.live_gesture_recognizer import LiveGestureRecognizer
 
 
 class CoordsConvertor:
@@ -74,11 +74,11 @@ if __name__ == "__main__":
     depth_image_source = realsense_wrapper.get_depth_image_source()
     estimator = BlazeposeEstimator(CameraBighand())
     keypoints_to_rectangle = KeypointsToRectangleImpl()
-    hand_tracker = HandTracker(image_source=realsense_wrapper.get_depth_image_source(),
-                               detector=BlazehandDetector(),
-                               estimator=estimator,
-                               keypoints_to_rectangle=keypoints_to_rectangle,
-                               display=OpencvDisplay())
+    hand_tracker = LiveGestureRecognizer(image_source=realsense_wrapper.get_depth_image_source(),
+                                         detector=BlazehandDetector(),
+                                         estimator=estimator,
+                                         keypoints_to_rectangle=keypoints_to_rectangle,
+                                         display=OpencvDisplay())
     finger_extractor = FingerExtractor()
     coords_converter = CoordsConvertor(realsense_wrapper.get_depth_intrinsics(),
                                        realsense_wrapper.get_color_intrinsics(),
@@ -86,9 +86,9 @@ if __name__ == "__main__":
     # extrinsics=extrinsics())
     extraction_display = ExtractedFingersDisplay()
 
-    for keypoints, norm_keypoints, normalized_image, bbox in hand_tracker.track():
+    for keypoints, norm_keypoints, normalized_image, bbox in hand_tracker.start():
         # TODO: is the hand at the distance of 40 cm or closer?
-        # Just track the hand if not.
+        # Just start the hand if not.
 
         # TODO: accept gesture?
         is_gesture_accepted = True

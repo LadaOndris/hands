@@ -6,7 +6,7 @@ import mediapipe as mp
 import numpy as np
 import tensorflow as tf
 
-from src.system.components.base import Detector, Estimator
+from src.system.components.base import Detector, Estimator, KeypointsToRectangle
 from src.utils.camera import Camera
 
 mp_hands = mp.solutions.hands
@@ -29,22 +29,32 @@ class CoordinatePredictor(ABC):
         pass
 
 
-class CustomCoordinatePredictor(CoordinatePredictor):
+class TrackingCoordinatePredictor(CoordinatePredictor):
 
-    def __init__(self, detector: Detector, estimator: Estimator, camera: Camera):
+    def __init__(self, detector: Detector, estimator: Estimator,
+                 keypoints_to_rectangle: KeypointsToRectangle, camera: Camera):
         super().__init__()
         self.detector = detector
         self.estimator = estimator
+        self.keypoints_to_rectangle = keypoints_to_rectangle
         self.camera = camera
+
+        self.rectangle = None
+        self.keypoints = None
 
     def predict(self, image: np.ndarray) -> CoordinatePrediction:
         image = tf.convert_to_tensor(image)
+        # Detect hand if none is being tracker
+        if self.keypoints is None:
+            self.rectangle = self.detector.detect(image)[0]
 
-        rectangle = self.detector.detect(image)[0]
-        if not tf.experimental.numpy.allclose(rectangle, 0):
+        # Estimate keypoints if there a hand detected
+        if not tf.experimental.numpy.allclose(self.rectangle, 0):
             hand_presence_flag, keypoints_uvz, normalized_keypoints_uvz, normalized_image, crop_offset_uv = \
-                self.estimator.estimate(image, rectangle)
+                self.estimator.estimate(image, self.rectangle)
+            self.keypoints = keypoints_uvz
             if hand_presence_flag:
+                self.rectangle = self.keypoints_to_rectangle.convert(keypoints_uvz)
                 keypoints_xyz = self.camera.pixel_to_world(keypoints_uvz)
                 return CoordinatePrediction(keypoints_xyz, keypoints_uvz)
         return None
