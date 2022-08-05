@@ -1,4 +1,4 @@
-class GestureAcceptanceResult:
+class GestureRecognitionResult:
 
     def __init__(self):
         # Statistics created for each prediction

@@ -1,11 +1,11 @@
 import argparse
 
-from src.acceptance.gesture_acceptance_result import GestureAcceptanceResult
+from src.acceptance.gesture_acceptance_result import GestureRecognitionResult
 from src.datasets.generators import get_source_generator
 from src.system.demo import GestureRecognizer
 
 
-def print_result(result: GestureAcceptanceResult):
+def print_result(result: GestureRecognitionResult):
     if not result.is_gesture_valid:
         result.gesture_label = '---'
 

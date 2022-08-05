@@ -2,12 +2,17 @@ import numpy as np
 import tensorflow as tf
 
 from src.acceptance.base import hand_orientation, joint_relation_errors, vectors_angle
-from src.acceptance.gesture_acceptance_result import GestureAcceptanceResult
+from src.acceptance.gesture_acceptance_result import GestureRecognitionResult
 from src.system.database.reader import UsecaseDatabaseReader
 from src.system.components.base import GestureRecognizer
 
 
 class SimpleGestureRecognizer(GestureRecognizer):
+    """
+    A custom-made gesture recognizer, which compares relative distances between
+    each pair of keypoints. Uses thresholds to determine whether the gesture is
+    the expected one.
+    """
 
     def __init__(self, error_thresh: int, orientation_thresh: int, database_subdir: str):
         self.jre_thresh = error_thresh
@@ -17,7 +22,7 @@ class SimpleGestureRecognizer(GestureRecognizer):
         self.database_reader.load_from_subdir(database_subdir)
         self.gesture_database = self.database_reader.hand_poses
 
-    def recognize(self, keypoints_xyz: np.ndarray) -> GestureAcceptanceResult:
+    def recognize(self, keypoints_xyz: np.ndarray) -> GestureRecognitionResult:
         """
         Compares given keypoints to the ones stored in the database
         and decides whether the hand satisfies some of the defined gestures.
@@ -27,7 +32,7 @@ class SimpleGestureRecognizer(GestureRecognizer):
         ----------
         keypoints ndarray of 21 keypoints, shape (batch_size, joints, coords)
         """
-        result = GestureAcceptanceResult()
+        result = GestureRecognitionResult()
         result.joints_jre = joint_relation_errors(keypoints_xyz[tf.newaxis, ...], self.gesture_database)
         aggregated_errors = np.sum(result.joints_jre, axis=-1)
         result.predicted_gesture_idx = np.argmin(aggregated_errors, axis=-1)

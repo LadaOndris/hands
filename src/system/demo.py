@@ -7,7 +7,7 @@ import estimation.jgrp2o.configuration as configs
 import src.utils.plots as plots
 from src.acceptance.base import fit_plane_through_hand, hand_orientation, joint_relation_errors, \
     vectors_angle
-from src.acceptance.gesture_acceptance_result import GestureAcceptanceResult
+from src.acceptance.gesture_acceptance_result import GestureRecognitionResult
 from src.detection.plots import image_plot
 from src.estimation.jgrp2o.preprocessing import convert_coords_to_global
 from src.system.database.reader import UsecaseDatabaseReader
@@ -36,7 +36,7 @@ class ModifiedLiveGestureRecognizer:
         self.gesture_database = self.database_reader.hand_poses
 
     def start(self, image_generator, generator_includes_labels=False) -> \
-            typing.Generator[GestureAcceptanceResult, None, None]:
+            typing.Generator[GestureRecognitionResult, None, None]:
         """
         Starts gesture recognition. It uses images supplied by
         image_generator.
@@ -91,7 +91,7 @@ class ModifiedLiveGestureRecognizer:
             yield acceptance_result
 
     @timing
-    def accept_gesture(self, keypoints: np.ndarray) -> GestureAcceptanceResult:
+    def accept_gesture(self, keypoints: np.ndarray) -> GestureRecognitionResult:
         """
         Compares given keypoints to the ones stored in the database
         and decides whether the hand satisfies some of the defined gestures.
@@ -101,7 +101,7 @@ class ModifiedLiveGestureRecognizer:
         ----------
         keypoints ndarray of 21 keypoints, shape (batch_size, joints, coords)
         """
-        result = GestureAcceptanceResult()
+        result = GestureRecognitionResult()
         result.joints_jre = joint_relation_errors(keypoints, self.gesture_database)
         aggregated_errors = np.sum(result.joints_jre, axis=-1)
         result.predicted_gesture_idx = np.argmin(aggregated_errors, axis=-1)
@@ -125,7 +125,7 @@ class ModifiedLiveGestureRecognizer:
             else:
                 self.fig, self.ax = image_plot()
 
-    def plot(self, acceptance_result: GestureAcceptanceResult, image, joints, norm=None, mean=None):
+    def plot(self, acceptance_result: GestureRecognitionResult, image, joints, norm=None, mean=None):
         if self.plot_result:
             # if self.plot_orientation and norm is not None and mean is not None:
             #    norm, mean = self._transform_orientation_vectors_to_2d(norm, mean)

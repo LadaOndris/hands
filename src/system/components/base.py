@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
-from src.acceptance.gesture_acceptance_result import GestureAcceptanceResult
+from src.acceptance.gesture_acceptance_result import GestureRecognitionResult
 
 
 class ImageSource(ABC):
@@ -52,5 +52,5 @@ class Display(ABC):
 class GestureRecognizer(ABC):
 
     @abstractmethod
-    def recognize(self, keypoints_xyz: np.ndarray) -> GestureAcceptanceResult:
+    def recognize(self, keypoints_xyz: np.ndarray) -> GestureRecognitionResult:
         pass

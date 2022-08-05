@@ -6,7 +6,7 @@ import tensorflow as tf
 import estimation.jgrp2o.configuration as configs
 import src.utils.plots as plots
 from src.acceptance.base import hand_orientation, joint_relation_errors, vectors_angle
-from src.acceptance.gesture_acceptance_result import GestureAcceptanceResult
+from src.acceptance.gesture_acceptance_result import GestureRecognitionResult
 from src.detection.plots import image_plot
 from src.system.database.reader import UsecaseDatabaseReader
 from src.system.hand_position_estimator import HandPositionEstimator
@@ -31,7 +31,7 @@ class LiveGestureRecognizer:
         self.gesture_database = self.database_reader.hand_poses
 
     def start(self, image_generator, generator_includes_labels=False) -> \
-            typing.Generator[GestureAcceptanceResult, None, None]:
+            typing.Generator[GestureRecognitionResult, None, None]:
         """
         Starts gesture recognition. It uses images supplied by
         image_generator.
@@ -91,7 +91,7 @@ class LiveGestureRecognizer:
             image_idx += 1
             yield acceptance_result
 
-    def accept_gesture(self, keypoints: np.ndarray) -> GestureAcceptanceResult:
+    def accept_gesture(self, keypoints: np.ndarray) -> GestureRecognitionResult:
         """
         Compares given keypoints to the ones stored in the database
         and decides whether the hand satisfies some of the defined gestures.
@@ -101,7 +101,7 @@ class LiveGestureRecognizer:
         ----------
         keypoints ndarray of 21 keypoints, shape (batch_size, joints, coords)
         """
-        result = GestureAcceptanceResult()
+        result = GestureRecognitionResult()
         result.joints_jre = joint_relation_errors(keypoints, self.gesture_database)
         aggregated_errors = np.sum(result.joints_jre, axis=-1)
         result.predicted_gesture_idx = np.argmin(aggregated_errors, axis=-1)
@@ -117,7 +117,7 @@ class LiveGestureRecognizer:
                                   result.angle_difference <= self.orientation_thresh
         return result
 
-    def _get_gesture_label(self, result: GestureAcceptanceResult):
+    def _get_gesture_label(self, result: GestureRecognitionResult):
         label = result.gesture_label
         if result.is_gesture_valid:
             return F"Gesture {label}"
@@ -134,7 +134,7 @@ class LiveGestureRecognizer:
         else:
             return angle
 
-    def _get_orientation_vectors_in_2d(self, result: GestureAcceptanceResult):
+    def _get_orientation_vectors_in_2d(self, result: GestureRecognitionResult):
         mean3d = result.orientation_joints_mean
         norm3d = result.orientation
         norm2d, mean2d = self.camera.world_to_pixel(
