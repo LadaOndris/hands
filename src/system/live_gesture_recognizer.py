@@ -6,14 +6,14 @@ import pyrealsense2 as rs
 from src.gestures.regression import ClassifierGestureRecognizer
 from src.system.components import CoordinatePredictor
 from src.system.components.base import Display, GestureRecognizer, ImageSource
-from src.system.components.CoordinatePredictor import TrackingCoordinatePredictor
+from src.system.components.CoordinatePredictor import MediapipeCoordinatePredictor, TrackingCoordinatePredictor
 from src.system.components.detector import BlazehandDetector
 from src.system.components.display import OpencvDisplay
 from src.system.components.estimator import BlazeposeEstimator
 from src.system.components.gestures import SimpleGestureRecognizer
-from src.system.components.image_source import RealSenseCameraWrapper
+from src.system.components.image_source import DefaultVideoCaptureSource, RealSenseCameraWrapper
 from src.system.components.keypoints_to_rectangle import KeypointsToRectangleImpl
-from src.utils.camera import Camera, CameraBighand
+from src.utils.camera import CameraBighand, get_camera
 
 
 class LiveGestureRecognizer:
@@ -24,12 +24,10 @@ class LiveGestureRecognizer:
     """
 
     def __init__(self, image_source: ImageSource, predictor: CoordinatePredictor,
-                 display: Display, camera: Camera,
-                 gesture_recognizer: GestureRecognizer = None):
+                 display: Display, gesture_recognizer: GestureRecognizer = None):
         self.image_source = image_source
         self.predictor = predictor
         self.display = display
-        self.camera = camera
         self.gesture_recognizer = gesture_recognizer
 
     def start(self):
@@ -70,23 +68,33 @@ def get_depth_filters():
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+    parser.add_argument('directory', type=str, action='store',
+                        help='the name of the directory that should contain the user-captured gesture database')
+    parser.add_argument('--camera', type=str, action='store', default=None,
+                        help='the camera model in use for live capture (default: None -> VideoCapture(0) is selected)')
     args = parser.parse_args()
 
-    realsense_wrapper = RealSenseCameraWrapper(enable_depth=True, enable_color=False,
-                                               filters=get_depth_filters())
-    depth_image_source = realsense_wrapper.get_depth_image_source()
+    if args.camera is None:
+        # Uses color camera and MediaPipe tracker
+        image_source = DefaultVideoCaptureSource()
+        predictor = MediapipeCoordinatePredictor()
+    else:
+        # Uses depth camera and custom-trained neural nets
+        realsense_wrapper = RealSenseCameraWrapper(enable_depth=True, enable_color=False,
+                                                   filters=get_depth_filters())
+        image_source = realsense_wrapper.get_depth_image_source()
+        camera = get_camera(args.camera)
+        predictor = TrackingCoordinatePredictor(detector=BlazehandDetector(),
+                                                estimator=BlazeposeEstimator(camera, presence_threshold=0.3),
+                                                keypoints_to_rectangle=KeypointsToRectangleImpl(shift_coeff=0.1),
+                                                camera=camera)
+
     display = OpencvDisplay()
-    camera = CameraBighand()
-    simple_recognizer = SimpleGestureRecognizer(150, 90, 'demo')
-    regression_recognizer = ClassifierGestureRecognizer('demo')
+    simple_recognizer = SimpleGestureRecognizer(150, 90, args.directory)
+    regression_recognizer = ClassifierGestureRecognizer(args.directory)
 
-    predictor = TrackingCoordinatePredictor(detector=BlazehandDetector(),
-                                            estimator=BlazeposeEstimator(camera, presence_threshold=0.3),
-                                            keypoints_to_rectangle=KeypointsToRectangleImpl(shift_coeff=0.1),
-                                            camera=camera)
-
-    live_recognizer = LiveGestureRecognizer(image_source=depth_image_source,
+    live_recognizer = LiveGestureRecognizer(image_source=image_source,
                                             predictor=predictor,
-                                            display=display, camera=camera,
+                                            display=display,
                                             gesture_recognizer=regression_recognizer)
     live_recognizer.start()
