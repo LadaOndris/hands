@@ -225,6 +225,27 @@ optional arguments:
     ├── system                   # Access point to gesture recognition system 
     │                              (database_scanner, gesture_recognizer, hand_position_estimator)
     └── utils                    # Camera, logs, plots, live capture, config
+## Gestures
+
+Gesture classifiers are located in `src/gestures` directory.
+
+Captured gesture database can be visualized using t-SNE or LDA using the `visualization.py` script.
+
+The `classifiers.py` evaluates many classifiers from sklearn library to see,
+which performs best on the given captured gestures.
+
+The `regression.py` trains an MLPClassifier on the given gesture database
+and later predicts using the trained model.
+
+### Which gesture recognizer should be used?
+
+There two main optinos:
+* Either use "SimpleGestureRecognizer", which was created 
+created as the first gesture recognizer. It requires proper setting of thresholds.
+* The other option is a classifier. One can use any recognizer from sklearn library.
+`regression.py` contains a ready-to-use MLPClassifier, which is the preferred way 
+of gesture recognition for higher accuracy. That said, from its nature it can't
+provide any feedback on which fingers are wrongly placed.
 
 
 ## License
