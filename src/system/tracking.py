@@ -34,19 +34,6 @@ class HandTracker:
         self.camera = camera
         self.gesture_recognizer = gesture_recognizer
 
-        decimation_filter = rs.decimation_filter()
-        decimation_filter.set_option(rs.option.filter_magnitude, 1)
-
-        spatial_filter = rs.spatial_filter()
-        spatial_filter.set_option(rs.option.filter_magnitude, 2)
-        spatial_filter.set_option(rs.option.filter_smooth_alpha, 0.5)
-        spatial_filter.set_option(rs.option.filter_smooth_delta, 20)
-        spatial_filter.set_option(rs.option.holes_fill, 1)
-
-        self.postprocessing_filters = [
-            spatial_filter
-        ]
-
     def track(self):
         rectangle = None
         keypoints = None
@@ -54,7 +41,7 @@ class HandTracker:
         while True:
             # Capture image to process next
             start_time = time.time()
-            image = self.image_source.get_new_image(self.postprocessing_filters)
+            image = self.image_source.get_new_image()
             image = tf.convert_to_tensor(image)
 
             # Detect when there no hand being tracked
@@ -91,11 +78,28 @@ class HandTracker:
             print("Elapsed time [ms]: {:.0f}".format((time.time() - start_time) * 1000))
 
 
+def get_depth_filters():
+    decimation_filter = rs.decimation_filter()
+    decimation_filter.set_option(rs.option.filter_magnitude, 1)
+
+    spatial_filter = rs.spatial_filter()
+    spatial_filter.set_option(rs.option.filter_magnitude, 2)
+    spatial_filter.set_option(rs.option.filter_smooth_alpha, 0.5)
+    spatial_filter.set_option(rs.option.filter_smooth_delta, 20)
+    spatial_filter.set_option(rs.option.holes_fill, 1)
+
+    postprocessing_filters = [
+        spatial_filter
+    ]
+    return postprocessing_filters
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     args = parser.parse_args()
 
-    realsense_wrapper = RealSenseCameraWrapper(enable_depth=True, enable_color=False)
+    realsense_wrapper = RealSenseCameraWrapper(enable_depth=True, enable_color=False,
+                                               filters=get_depth_filters())
     depth_image_source = realsense_wrapper.get_depth_image_source()
     display = OpencvDisplay()
     camera = CameraBighand()

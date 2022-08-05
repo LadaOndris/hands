@@ -30,7 +30,7 @@ class DefaultVideoCaptureSource(ImageSource):
 
 class RealSenseCameraWrapper:
 
-    def __init__(self, enable_depth: bool, enable_color: bool):
+    def __init__(self, enable_depth: bool, enable_color: bool, filters: List[rs.filter] = None):
         if not enable_color and not enable_depth:
             raise ValueError('Both color and depth cannot be disabled.')
         self.is_depth_enabled = enable_depth
@@ -39,7 +39,7 @@ class RealSenseCameraWrapper:
 
         self.pipeline, self.profile = self.start_pipeline()
 
-        self.depth_image_source: ImageSource = DepthRealSenseImageSource(self.pipeline, self.profile)
+        self.depth_image_source: ImageSource = DepthRealSenseImageSource(self.pipeline, self.profile, filters)
         self.color_image_source: ImageSource = ColorRealSenseImageSource(self.pipeline, self.profile)
 
     def start_pipeline(self) -> (rs.pipeline, rs.pipeline_profile):
@@ -162,7 +162,8 @@ class ColorRealSenseImageSource(ImageSource):
 
 class DepthRealSenseImageSource(ImageSource):
 
-    def __init__(self, pipeline: rs.pipeline, profile: rs.pipeline_profile, max_depth=1000):
+    def __init__(self, pipeline: rs.pipeline, profile: rs.pipeline_profile,
+                 filters: List[rs.filter], max_depth=1000):
         """
         Captures image from an Intel RealSense camera.
 
@@ -175,17 +176,18 @@ class DepthRealSenseImageSource(ImageSource):
         self.pipeline = pipeline
         self.profile = profile
         self.max_depth = max_depth
+        self.filters = filters
         self.previous_image = None
 
         depth_unit = get_depth_unit(profile)
         millimeter = 0.001
         self.depth_unit_correction_factor = depth_unit / millimeter
 
-    def get_new_image(self, filters: List[rs.filter] = None):
+    def get_new_image(self):
         frameset = self.pipeline.wait_for_frames()
         depth_frame = frameset.get_depth_frame()
-        if filters is not None:
-            for filter in filters:
+        if self.filters is not None:
+            for filter in self.filters:
                 depth_frame = filter.process(depth_frame)
         depth_image = np.array(depth_frame.get_data())
         depth_image = depth_image[..., np.newaxis] * self.depth_unit_correction_factor
