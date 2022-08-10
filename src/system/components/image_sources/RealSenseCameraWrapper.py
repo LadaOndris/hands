@@ -2,30 +2,11 @@ from typing import List
 
 import numpy as np
 import pyrealsense2 as rs
-from cv2 import cv2
 
-from postoperations.calibration.calibrate import extrinsics_from_rotation_and_translation
+from src.postoperations.calibration.calibrate import extrinsics_from_rotation_and_translation
 from src.system.components.base import ImageSource
 from src.utils.imaging import crop_to_equal_dims
 from src.utils.live import get_depth_unit
-
-
-class DefaultVideoCaptureSource(ImageSource):
-
-    def __init__(self):
-        self.cap = cv2.VideoCapture(0)
-        self.previous_image = None
-
-    def get_new_image(self):
-        success, image = self.cap.read()
-        self.previous_image = image
-        return image
-
-    def get_previous_image(self):
-        return self.previous_image
-
-    def __del__(self):
-        self.cap.release()
 
 
 class RealSenseCameraWrapper:

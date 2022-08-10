@@ -1,3 +1,10 @@
+"""
+This file contains deployment code using OpenVINO library
+to make the Blazeface model to run on Neural Compute Stick 2.
+
+Experimentation only.
+"""
+
 from openvino.inference_engine import IECore, IENetwork
 import numpy as np
 

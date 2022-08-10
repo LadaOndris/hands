@@ -4,7 +4,7 @@ import cv2
 import numpy as np
 
 from src.system.components.base import Display
-from src.system.components.image_source import RealSenseCameraWrapper
+from system.components.image_sources.RealSenseCameraWrapper import RealSenseCameraWrapper
 
 
 class OpencvDisplay(Display):

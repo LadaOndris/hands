@@ -3,10 +3,8 @@
 Author: Ladislav Ondris
 
 This project performs gesture recognition from depth images. 
-It consists of hand detection, hand pose estimation, and gesture classification.
+It consists mostly of hand detection, hand pose estimation, and gesture classification.
 
-
-See demonstration videos, which are located in the `docs/` directory.
 
 ## Prerequisites
 
@@ -123,22 +121,6 @@ The specific implementations are discussed below.
 
 ### ImageSource implementations
 
-#### Empty display
-`EmptyDisplay` is an empty implementation of the abstract class. It can be used
-if no results are wanted to be displayed.
-
-#### Stdout display
-`StdoutDisplay` prints the recognized gesture to standard output.
-
-<span style="color:red;">Console screen.</span>
-
-#### Opencv display
-`OpencvDisplay` supports plotting the image, together with a label of the recognized gesture.
-It can also display a rectangle as the result of hand detection or the specific keypoints.
-
-<span style="color:red;">Image.</span>
-
-
 ### CoordinatePredictor solutions
 
 Coordinate predictors, given an image, return a set of 3D coordinates, specifying the 
@@ -189,6 +171,24 @@ LDA.
 This script evaluates many classifiers from sklearn
 library to determine,
 which performs best on the given captured gestures.
+
+
+### Display implementations
+
+#### Empty display
+`EmptyDisplay` is an empty implementation of the abstract class. It can be used
+if no results are wanted to be displayed.
+
+#### Stdout display
+`StdoutDisplay` prints the recognized gesture to standard output.
+
+<span style="color:red;">Console screen.</span>
+
+#### Opencv display
+`OpencvDisplay` supports plotting the image, together with a label of the recognized gesture.
+It can also display a rectangle as the result of hand detection or the specific keypoints.
+
+<span style="color:red;">Image.</span>
 
 
 

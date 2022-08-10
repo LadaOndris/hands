@@ -9,7 +9,8 @@ from src.system.components.detector import BlazehandDetector
 from system.components.displays.StdoutDisplay import StdoutDisplay
 from src.system.components.estimator import BlazeposeEstimator
 from system.components.gesture_recognizers.RelativeDistanceGestureRecognizer import RelativeDistanceGestureRecognizer
-from src.system.components.image_source import DefaultVideoCaptureSource, RealSenseCameraWrapper
+from system.components.image_sources.RealSenseCameraWrapper import RealSenseCameraWrapper
+from system.components.image_sources.DefaultVideoCaptureSource import DefaultVideoCaptureSource
 from src.system.components.keypoints_to_rectangle import KeypointsToRectangleImpl
 from src.utils.camera import get_camera
 from system.live_gesture_recognizer import LiveGestureRecognizer

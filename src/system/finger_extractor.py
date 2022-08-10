@@ -8,7 +8,7 @@ from src.utils.camera import CameraBighand
 from system.components.detector import BlazehandDetector
 from system.components.displays.OpencvDisplay import OpencvDisplay
 from system.components.estimator import BlazeposeEstimator
-from system.components.image_source import RealSenseCameraWrapper
+from system.components.image_sources.RealSenseCameraWrapper import RealSenseCameraWrapper
 from system.components.keypoints_to_rectangle import KeypointsToRectangleImpl
 from system.live_gesture_recognizer import LiveGestureRecognizer
 
