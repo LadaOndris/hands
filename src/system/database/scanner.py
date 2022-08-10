@@ -3,7 +3,7 @@ import time
 
 import numpy as np
 
-from src.system.components import CoordinatePredictor
+from src.system.components import coordinate_predictors
 from src.system.components.base import Display, ImageSource, KeypointsToRectangle
 from src.utils.logs import get_current_timestamp, make_dir
 from src.utils.paths import USECASE_DATASET_DIR
@@ -12,7 +12,7 @@ from src.utils.paths import USECASE_DATASET_DIR
 class UsecaseDatabaseScanner:
 
     def __init__(self, subdir: str, image_source: ImageSource,
-                 predictor: CoordinatePredictor,
+                 predictor: coordinate_predictors,
                  keypoints_to_rectangle: KeypointsToRectangle,
                  display: Display):
         self.subdir = subdir

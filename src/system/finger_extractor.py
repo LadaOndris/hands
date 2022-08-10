@@ -6,7 +6,7 @@ from postoperations.calibration.calibrate import deproject_pixels, project_point
 from src.postoperations.extraction import ExtractedFingersDisplay, FingerExtractor
 from src.utils.camera import CameraBighand
 from system.components.detector import BlazehandDetector
-from system.components.display import OpencvDisplay
+from system.components.displays.OpencvDisplay import OpencvDisplay
 from system.components.estimator import BlazeposeEstimator
 from system.components.image_source import RealSenseCameraWrapper
 from system.components.keypoints_to_rectangle import KeypointsToRectangleImpl

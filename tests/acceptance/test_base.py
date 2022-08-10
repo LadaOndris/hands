@@ -2,7 +2,7 @@ from unittest import TestCase
 
 import numpy as np
 
-from src.acceptance.base import vectors_angle
+from gestures.relative_distance.base import vectors_angle
 
 
 class TestBase(TestCase):

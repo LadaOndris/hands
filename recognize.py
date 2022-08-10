@@ -2,12 +2,13 @@ import argparse
 
 import pyrealsense2 as rs
 
-from src.gestures.regression import ClassifierGestureRecognizer
-from src.system.components.CoordinatePredictor import MediapipeCoordinatePredictor, TrackingCoordinatePredictor
+from system.components.gesture_recognizers.MLPGestureRecognizer import MLPGestureRecognizer
+from src.system.components.coordinate_predictors import MediapipeCoordinatePredictor
+from system.components.coordinate_predictors.TrackingCoordinatePredictor import TrackingCoordinatePredictor
 from src.system.components.detector import BlazehandDetector
-from src.system.components.display import OpencvDisplay
+from system.components.displays.StdoutDisplay import StdoutDisplay
 from src.system.components.estimator import BlazeposeEstimator
-from src.system.components.gestures import SimpleGestureRecognizer
+from system.components.gesture_recognizers.RelativeDistanceGestureRecognizer import RelativeDistanceGestureRecognizer
 from src.system.components.image_source import DefaultVideoCaptureSource, RealSenseCameraWrapper
 from src.system.components.keypoints_to_rectangle import KeypointsToRectangleImpl
 from src.utils.camera import get_camera
@@ -57,9 +58,10 @@ if __name__ == "__main__":
                                                 keypoints_to_rectangle=KeypointsToRectangleImpl(shift_coeff=0.1),
                                                 camera=camera)
 
-    display = OpencvDisplay()
-    simple_recognizer = SimpleGestureRecognizer(args.error_threshold, args.orientation_threshold, args.directory)
-    regression_recognizer = ClassifierGestureRecognizer(args.directory)
+    # display = OpencvDisplay()
+    display = StdoutDisplay()
+    simple_recognizer = RelativeDistanceGestureRecognizer(args.error_threshold, args.orientation_threshold, args.directory)
+    regression_recognizer = MLPGestureRecognizer(args.directory)
 
     live_recognizer = LiveGestureRecognizer(image_source=image_source,
                                             predictor=predictor,

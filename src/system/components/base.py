@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
-from src.acceptance.gesture_acceptance_result import GestureRecognitionResult
+from gestures.gesture_acceptance_result import GestureRecognitionResult
 
 
 class ImageSource(ABC):
@@ -53,4 +53,21 @@ class GestureRecognizer(ABC):
 
     @abstractmethod
     def recognize(self, keypoints_xyz: np.ndarray) -> GestureRecognitionResult:
+        pass
+
+
+class CoordinatePrediction:
+
+    def __init__(self, world_coordinates: np.ndarray, image_coordinates: np.ndarray):
+        self.world_coordinates = world_coordinates
+        self.image_coordinates = image_coordinates
+
+
+class CoordinatePredictor(ABC):
+
+    def __init__(self):
+        pass
+
+    @abstractmethod
+    def predict(self, image: np.ndarray) -> CoordinatePrediction:
         pass

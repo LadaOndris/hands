@@ -19,7 +19,7 @@ class UsecaseDatabaseReader:
         Parameters
         ----------
         subdir  :   str
-            Directory containing target gestures.
+            Directory containing target gesture_recognizers.
         """
         if len(subdir) == 0:
             raise Exception("Invalid argument 'subdir'")

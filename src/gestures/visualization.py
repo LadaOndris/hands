@@ -13,7 +13,7 @@ def visualize(x, y):
     x_transformed = LDA(n_components=2).fit_transform(x, y)
     fig, ax = plt.subplots()
     ax.scatter(x_transformed[:, 0], x_transformed[:, 1], s=1, c=y, cmap=plt.cm.get_cmap('jet', n_classes))
-    ax.set_title('t-SNE of gestures')
+    ax.set_title('t-SNE of gesture_recognizers')
     ax.axis('tight')
     fig.show()
 

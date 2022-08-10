@@ -1,6 +1,6 @@
 import time
 
-from src.system.components import CoordinatePredictor
+from src.system.components import coordinate_predictors
 from src.system.components.base import Display, GestureRecognizer, ImageSource
 
 
@@ -11,7 +11,7 @@ class LiveGestureRecognizer:
     in a window.
     """
 
-    def __init__(self, image_source: ImageSource, predictor: CoordinatePredictor,
+    def __init__(self, image_source: ImageSource, predictor: coordinate_predictors,
                  display: Display, gesture_recognizer: GestureRecognizer = None):
         self.image_source = image_source
         self.predictor = predictor

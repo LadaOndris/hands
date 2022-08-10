@@ -101,39 +101,95 @@ optional arguments:
   --hide-plot           hide plots of the captured poses - not recommended
 ```
 
-## Hand tracking solutions
+## System architecture
 
-### Color-based
+The system is designed from several components. Each of these components inherit from a base class,
+which defines its interface. The abstract classes are defined in `system/components/base.py`.
+This allows easy changes of implementations of components.
+
+The components are:
+* ImageSource
+* CoordinatePredictor
+  * Detector
+  * Estimator
+* GestureRecognizer
+* Display
+
+Implementations of these classes can be found in `system/components` in their corresponding folders.
+The specific implementations are discussed below.
+
+<span style="color:red;">how to change which component is used.</span>
+
+
+### ImageSource implementations
+
+#### Empty display
+`EmptyDisplay` is an empty implementation of the abstract class. It can be used
+if no results are wanted to be displayed.
+
+#### Stdout display
+`StdoutDisplay` prints the recognized gesture to standard output.
+
+<span style="color:red;">Console screen.</span>
+
+#### Opencv display
+`OpencvDisplay` supports plotting the image, together with a label of the recognized gesture.
+It can also display a rectangle as the result of hand detection or the specific keypoints.
+
+<span style="color:red;">Image.</span>
+
+
+### CoordinatePredictor solutions
+
+Coordinate predictors, given an image, return a set of 3D coordinates, specifying the 
+precise position of the hand in space. The repository contains two solutions—color-based and depth-based.
+
+#### Color-based
 
 Uses **Mediapipe** hands solution from Google (https://google.github.io/mediapipe/solutions/hands.html).
+The implementation class is named `MediapipeCoordinatePredictor`.
 
-### Depth-based
+#### Depth-based
 
 Uses custom-trained networks—**Blazeface** hand detector, and **Blazepose** hand pose estimator.
+The implementation is in the `TrackingCoordinatePredictor` class. Both models are written in
+TensorFlow.
+
+This solution could also be adapted for color-based tracking, but it might require a few
+tweaks in the architecture or network configs. Also, new datasets would have to be acquired,
+and the models would have to be trained from scratch on those datasets. That said, the Mediapipe solution
+provides great results currently.
 
 
+### GestureRecognizer implementations
 
-## Gestures
+Two ready-to-use gesture recognizers are located in `src/system/components/gesture_recognizers` directory.
 
-Gesture classifiers are located in `src/gestures` directory.
+#### RelativeDistanceGestureRecognizer
+`RelativeDistanceGestureRecognizer` was 
+created as the first gesture recognizer. It requires proper setting of thresholds.
 
-Captured gesture database can be visualized using t-SNE or LDA using the `visualization.py` script.
+#### MLPGestureRecognizer
+`MLPGestureRecognizer` is a classifier that uses a MLP to classify gestures.
+The MLPGestureRecognizer is the preferred way of gesture
+recognition for higher accuracy. That said, from its nature it can't
+provide any feedback on which fingers are wrongly placed.
 
-The `classifiers.py` evaluates many classifiers from sklearn library to see,
+#### Other gesture-recognition related code
+
+Other gesture-recognition related code is located in the
+`src/gestures` directory.
+
+`visualization.py`
+* Captured gesture database can be visualized using t-SNE or 
+LDA.
+
+`sklearn_classifiers.py`
+* One can use any classifier from the sklearn library.
+This script evaluates many classifiers from sklearn
+library to determine,
 which performs best on the given captured gestures.
 
-The `regression.py` trains an MLPClassifier on the given gesture database
-and later the trained model is used as a gesture recognizer. 
-
-### Which gesture recognizer should be used?
-
-Two main options exist:
-* Either use "SimpleGestureRecognizer", which was 
-created as the first gesture recognizer. It requires proper setting of thresholds.
-* The other option is a **classifier**. One can use any classifier from the sklearn library.
-`regression.py` contains a ready-to-use MLPClassifier, which is the preferred way 
-of gesture recognition for higher accuracy. That said, from its nature it can't
-provide any feedback on which fingers are wrongly placed.
 
 
 
