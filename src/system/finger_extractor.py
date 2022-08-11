@@ -1,3 +1,7 @@
+"""
+Finger extraction is not finished.
+"""
+
 import cv2 as cv
 import numpy as np
 
@@ -10,7 +14,7 @@ from system.components.displays.OpencvDisplay import OpencvDisplay
 from system.components.estimator import BlazeposeEstimator
 from system.components.image_sources.RealSenseCameraWrapper import RealSenseCameraWrapper
 from system.components.keypoints_to_rectangle import KeypointsToRectangleImpl
-from system.live_gesture_recognizer import LiveGestureRecognizer
+from system.main import System
 
 
 class CoordsConvertor:
@@ -78,11 +82,11 @@ if __name__ == "__main__":
     depth_image_source = realsense_wrapper.get_depth_image_source()
     estimator = BlazeposeEstimator(CameraBighand())
     keypoints_to_rectangle = KeypointsToRectangleImpl()
-    hand_tracker = LiveGestureRecognizer(image_source=realsense_wrapper.get_depth_image_source(),
-                                         detector=BlazehandDetector(),
-                                         estimator=estimator,
-                                         keypoints_to_rectangle=keypoints_to_rectangle,
-                                         display=OpencvDisplay())
+    hand_tracker = System(image_source=realsense_wrapper.get_depth_image_source(),
+                          detector=BlazehandDetector(),
+                          estimator=estimator,
+                          keypoints_to_rectangle=keypoints_to_rectangle,
+                          display=OpencvDisplay())
     finger_extractor = FingerExtractor()
     coords_converter = CoordsConvertor(realsense_wrapper.get_depth_intrinsics(),
                                        realsense_wrapper.get_color_intrinsics(),

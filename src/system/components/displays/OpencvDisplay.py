@@ -14,8 +14,11 @@ class OpencvDisplay(Display):
         cv2.namedWindow(self.window_same, cv2.WINDOW_NORMAL)
 
     def update(self, image, keypoints=None, bounding_boxes=None, gesture_label: str = None):
-        # Convert depth image to something cv2 can understand
-        depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(image, alpha=0.4), cv2.COLORMAP_BONE)
+        if image.shape[-1] == 1:
+            # Convert depth image to something cv2 can understand
+            depth_colormap = cv2.applyColorMap(cv2.convertScaleAbs(image, alpha=0.4), cv2.COLORMAP_BONE)
+        else:
+            depth_colormap = image
 
         # Draw rectangles in the depth colormap image
         if bounding_boxes is not None:
