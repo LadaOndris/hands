@@ -1,9 +1,10 @@
+from typing import Tuple
+
 import numpy as np
 from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
 from sklearn.ensemble import AdaBoostClassifier, RandomForestClassifier
 from sklearn.gaussian_process import GaussianProcessClassifier
 from sklearn.gaussian_process.kernels import RBF
-from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.neural_network import MLPClassifier
@@ -41,9 +42,9 @@ classifiers = [
 ]
 
 
-def prepare_data():
+def load_data(gesture_database_name: str) -> Tuple:
     reader = UsecaseDatabaseReader()
-    reader.load_from_subdir('demo')
+    reader.load_from_subdir(gesture_database_name)
 
     x = reader.hand_poses
     y = reader.labels
@@ -53,9 +54,10 @@ def prepare_data():
     return x_flattened, y
 
 
-x, y = prepare_data()
+if __name__ == "__main__":
+    x, y = load_data('depth')
 
-for name, clf in zip(names, classifiers):
-    model = clf.fit(x, y)
-    score = model.score(x, y)
-    print(f"{name}: {score}")
+    for name, clf in zip(names, classifiers):
+        model = clf.fit(x, y)
+        score = model.score(x, y)
+        print(f"{name}: {score}")
