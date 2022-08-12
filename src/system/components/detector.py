@@ -2,13 +2,10 @@ import tensorflow as tf
 
 from src.detection.blazeface.model import build_blaze_face
 from src.detection.blazeface.utils import train_utils
-from src.detection.yolov3 import utils
-from src.detection.yolov3.architecture.loader import YoloLoader
-from src.utils import bbox_utils
-from src.utils.config import TEST_YOLO_CONF_THRESHOLD
-from src.utils.imaging import resize_bilinear_nearest, RESIZE_MODE_CROP, tf_resize_image
-from src.utils.paths import MODELS_DIR, SAVED_MODELS_DIR
 from src.system.components.base import Detector
+from src.utils import bbox_utils
+from src.utils.imaging import resize_bilinear_nearest
+from src.utils.paths import MODELS_DIR, SAVED_MODELS_DIR
 
 
 class BlazehandDetector(Detector):
@@ -63,68 +60,6 @@ class BlazehandDetector(Detector):
 
     def save_model(self, path):
         self.model.save(path)
-
-
-class YoloDetector(Detector):
-
-    def __init__(self, batch_size, resize_mode, num_detections):
-        self.num_detections = num_detections
-        self.batch_size = batch_size
-        self.model = YoloLoader.load_from_weights(resize_mode, batch_size=1)
-
-    @tf.function
-    def detect(self, images, num_detections=1):
-        """
-        Parameters
-        ----------
-        images
-        num_detections
-            The number of predicted boxes.
-        fig_location
-            Path including a file name for saving the figure.
-
-        Returns
-        -------
-        boxes : shape [batch_size, 4]
-            Returns all zeros if non-max suppression did not find any valid boxes.
-        """
-        detection_batch_images = self.preprocess(images)
-        # Call predict on the detector
-        yolo_outputs = self.model.tf_model(detection_batch_images)
-
-        boxes = self.postprocess(yolo_outputs)
-        return boxes
-
-    def preprocess(self, images):
-        """
-        Multiplies pixel values by 8 to match the units expected by the detector.
-        Converts image dtype to tf.uint8.
-
-        Parameters
-        ----------
-        images
-            Image pixel values are expected to be in milimeters.
-        """
-        dtype = images.dtype
-        # The detector expects unit 0.125 mm, and not 1 mm per unit.
-        images = tf.cast(images, dtype=tf.float32)
-        images *= 8.0
-        images = tf.cast(images, dtype=dtype)
-        images = tf.image.convert_image_dtype(images, dtype=tf.uint8)
-        return images
-
-    def postprocess(self, model_output):
-        boxes, scores, nums = utils.boxes_from_yolo_outputs(model_output,
-                                                            self.model.batch_size,
-                                                            self.model.input_shape,
-                                                            TEST_YOLO_CONF_THRESHOLD,
-                                                            iou_thresh=.7,
-                                                            max_boxes=self.num_detections)
-        return boxes
-
-    @property
-    def input_shape(self):
-        return self.model.input_shape
 
 
 if __name__ == "__main__":
