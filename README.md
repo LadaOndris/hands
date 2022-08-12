@@ -44,8 +44,9 @@ The usage of the real-time recognition from live images is shown in
 named `color` is already present,
 containing several representative gestures.
 
-To start the gesture recognition system using gesture database stored in 
-the `color` directory:  
+Start the gesture recognition system using gesture database stored in 
+the `color` directory using the following command. Note that a color camera 
+is required as the primary camera source (a web camera is sufficient). 
 
 ```
 python3 recognize.py color
@@ -58,6 +59,9 @@ The following images showcase the system's display:
     <img src="./docs/readme/opencv_display_2.png" alt="opencv_display_2" width="250"/>
     <img src="./docs/readme/opencv_display_-.png" alt="opencv_display_-" width="250"/>
 </p>
+
+Appropriate coordinate predictor (color or depth) is selected depending on the selected camera.
+
 
 
 ### Preparation of gesture database
@@ -75,13 +79,13 @@ The database is then used by `live_gesture_recognizer.py`.
 To capture a gesture with label `1` into a `gesturesdb` directory with a scan
 period of one second and SR305 camera:  
 ```
-python3 database.py gesturesdb 1 10 --camera SR305
+python3 scan_database.py gesturesdb 1 10 --camera SR305
 ```
 
 To capture a gesture with label `hi` into a `colordb` directory with a scan 
 period of one second and color camera:
 ```
-python3 database.py colordb hi 10
+python3 scan_database.py colordb hi 10
 ```
 
 ```
@@ -186,12 +190,36 @@ Other gesture-recognition related code is located in the
 LDA, which shows that clusters of the same gestures can be easily separated 
 and, thus, classified as the correct class. 
 
+
+<p float="left">
+    <img src="./docs/readme/t-SNE.png" alt="t-SNE" width="350"/>
+    <img src="./docs/readme/LDA.png" alt="LDA" width="350"/>
+</p>
+
 `sklearn_classifiers.py`
 * One can use any classifier from the sklearn library.
 This script evaluates many classifiers from sklearn
 library to determine,
 which performs best on the given captured gestures.
 
+```
+python3 sklearn_classifiers.py
+```
+prints:
+```
+Nearest Neighbors: 0.98
+Linear SVM: 0.69
+RBF SVM: 0.98
+Gaussian Process: 1.0
+Decision Tree: 1.0
+Random Forest: 1.0
+MLP: 1.0
+AdaBoost: 0.5
+Naive Bayes: 0.99
+QDA: 1.0
+```
+
+Change the name of the gesture database in code to evaluate classifiers on a different gesture database.
 
 ### Display implementations
 
@@ -199,8 +227,17 @@ which performs best on the given captured gestures.
 `EmptyDisplay` is an empty implementation of the abstract class. It can be used
 if no results are wanted to be displayed.
 
+
+```
+python3 recognize.py color --display empty
+```
+
 #### Stdout display
 `StdoutDisplay` prints the recognized gesture to standard output.
+
+```
+python3 recognize.py color --display stdout
+```
 
 <p float="left">
     <img src="./docs/readme/stdout_display.png" alt="stdout_display" width="250"/>
@@ -209,6 +246,10 @@ if no results are wanted to be displayed.
 #### Opencv display
 `OpencvDisplay` supports plotting the image, together with a label of the recognized gesture.
 It can also display a rectangle as the result of hand detection or the specific keypoints.
+
+```
+python3 recognize.py color --display opencv
+```
 
 <p float="left">
     <img src="./docs/readme/opencv_display_5.png" alt="live_gesture1" width="250"/>
