@@ -2,7 +2,7 @@ from src.estimation.blazepose.models.blazepose_full import BlazePoseFull
 from src.estimation.blazepose.models.blazepose_light import BlazePoseLight
 
 
-class ModelCreator():
+class ModelCreator:
 
     @staticmethod
     def create_model(model_name, n_points, n_point_features):

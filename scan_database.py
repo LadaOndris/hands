@@ -1,12 +1,12 @@
 import argparse
 
-from src.system.components.coordinate_predictors import MediapipeCoordinatePredictor
-from system.components.coordinate_predictors.TrackingCoordinatePredictor import TrackingCoordinatePredictor
+from src.system.components.coordinate_predictors.MediapipeCoordinatePredictor import MediapipeCoordinatePredictor
+from src.system.components.coordinate_predictors.TrackingCoordinatePredictor import TrackingCoordinatePredictor
 from src.system.components.detector import BlazehandDetector
-from system.components.displays.OpencvDisplay import OpencvDisplay
+from src.system.components.displays.OpencvDisplay import OpencvDisplay
 from src.system.components.estimator import BlazeposeEstimator
-from system.components.image_sources.RealSenseCameraWrapper import RealSenseCameraWrapper
-from system.components.image_sources.DefaultVideoCaptureSource import DefaultVideoCaptureSource
+from src.system.components.image_sources.DefaultVideoCaptureSource import DefaultVideoCaptureSource
+from src.system.components.image_sources.RealSenseCameraWrapper import RealSenseCameraWrapper
 from src.system.components.keypoints_to_rectangle import KeypointsToRectangleImpl
 from src.system.database.scanner import UsecaseDatabaseScanner
 from src.utils.camera import get_camera

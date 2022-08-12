@@ -1,14 +1,10 @@
-import json
-
 import tensorflow as tf
 
-from src.estimation.blazepose.models.ModelCreator import ModelCreator
 from src.datasets.bighand.dataset import BighandDataset
-from src.utils.camera import CameraBighand
-from src.utils.paths import BIGHAND_DATASET_DIR, SRC_DIR
-from src.utils.plots import plot_depth_image, plot_image_with_skeleton
-
 from src.estimation.blazepose.data.preprocessing import preprocess
+from src.utils.camera import CameraBighand
+from src.utils.paths import BIGHAND_DATASET_DIR
+from src.utils.plots import plot_image_with_skeleton
 
 
 def get_line(file):
@@ -23,7 +19,7 @@ def show_sample_from_each_folder(save_fig_location_pattern=None):
     for i, file in enumerate(ds.train_annotation_files):
         fig_location = str(save_fig_location_pattern).format(i)
         with open(file, 'r') as f:
-            for i in range(samples_per_file):
+            for sample_id in range(samples_per_file):
                 line = f.readline()
                 image, joints = ds._prepare_sample(line)
                 image = tf.squeeze(image)
@@ -72,5 +68,5 @@ def show_image(annotation_filepath: str, image_name: str):
 
 
 if __name__ == '__main__':
-    #show_sample_from_each_folder()
+    # show_sample_from_each_folder()
     show_image('Subject_4/76 150', 'image_D00002019.png')

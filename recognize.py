@@ -15,9 +15,9 @@ from src.system.components.image_sources.RealSenseCameraWrapper import RealSense
 from src.system.components.keypoints_to_rectangle import KeypointsToRectangleImpl
 from src.system.main import System
 from src.utils.camera import get_camera
-from system.components.base import Display
-from system.components.displays.EmptyDisplay import EmptyDisplay
-from system.components.displays.StdoutDisplay import StdoutDisplay
+from src.system.components.base import Display
+from src.system.components.displays.EmptyDisplay import EmptyDisplay
+from src.system.components.displays.StdoutDisplay import StdoutDisplay
 
 
 def get_depth_filters():

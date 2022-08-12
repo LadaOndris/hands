@@ -1,13 +1,14 @@
-from PIL import Image
-from matplotlib import pyplot as plt
-import matplotlib.patches as patches
+import os
 from collections import Counter
-from pathlib import Path
+
+import matplotlib.patches as patches
 import numpy as np
 import tensorflow as tf
-import os
-from src.dataset import HandsegDataset
-from src.dataset_bboxes import HandsegDatasetBboxes
+from matplotlib import pyplot as plt
+from PIL import Image
+
+from datasets.handseg150k.dataset import HandsegDataset
+from datasets.handseg150k.dataset_bboxes import HandsegDatasetBboxes
 from src.utils.paths import HANDSEG_DATASET_DIR
 
 dirname = os.path.dirname(__file__)
@@ -34,7 +35,8 @@ def foo():
 
 
 def depth_hist():
-    dataset = HandsegDatasetBboxes(batch_size=16, dataset_path=HANDSEG_DATASET_DIR, train_size=0.8, )
+    dataset = HandsegDatasetBboxes(batch_size=16, dataset_path=HANDSEG_DATASET_DIR, train_size=0.8,
+                                   img_size=(480, 480))
     for batch_images, batch_bboxes in dataset.train_dataset:
         plt.hist(batch_images.numpy().flatten(), np.linspace(1, tf.reduce_max(batch_images), 100))
         break
@@ -151,7 +153,7 @@ def analyse_pixel_distance():
                                    img_size=[416, 416])
     for batch_images, batch_bboxes in dataset.train_dataset:
         img = batch_images[0].numpy()
-        plt.hist(img[img >0], bins=100)
+        plt.hist(img[img > 0], bins=100)
         plt.show()
         mask = np.where(batch_images > 0, 1, 0)
         print(batch_images[mask == 1])
