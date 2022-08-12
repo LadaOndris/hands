@@ -28,12 +28,12 @@
         "learning_rate": 0.0005,
         "learning_decay_rate": 0.945,
         "load_weights": false,
-        "pretrained_weights_path": "logs/20211103-011843/train_ckpts/weights.40.h5",
+        "pretrained_weights_path": "",
         "initial_epoch": 0
     },
     "test": {
         "pck_ref_points_idxs" :         [8, 9],
         "pck_thresh":                   0.5,
-        "weights_path": "logs/20211117-140100_TWOHEAD/train_ckpts/weights.40.h5"
+        "weights_path": "models/blazepose.h5"
     }
 }

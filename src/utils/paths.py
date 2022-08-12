@@ -6,6 +6,7 @@ _ROOT_PATH = Path(__file__).parent.parent.parent
 ROOT_DIR = _ROOT_PATH
 LOGS_DIR = _ROOT_PATH.joinpath('logs')
 SAVED_MODELS_DIR = _ROOT_PATH.joinpath('saved_models')
+MODELS_DIR = _ROOT_PATH.joinpath('models')
 SRC_DIR = _ROOT_PATH.joinpath('src')
 DOCS_DIR = _ROOT_PATH.joinpath('docs')
 OTHER_DIR = _ROOT_PATH.joinpath('other')

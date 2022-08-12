@@ -1,27 +1,30 @@
+"""
+Loads Blazeface model and prints predicted bounding boxers on Handseg dataset.
+"""
+
 import tensorflow as tf
 
-from detection.blazeface.utils.train_utils import shift_depth
-from estimation.blazepose.data.preprocessing import add_noise
 from src.datasets.handseg150k.dataset_bboxes import HandsegDatasetBboxes
-from src.datasets.simple_boxes.dataset_bboxes import SimpleBoxesDataset
 from src.detection.blazeface.model import build_blaze_face
 from src.detection.blazeface.utils import train_utils
+from src.detection.blazeface.utils.train_utils import shift_depth
 from src.detection.plots import draw_bboxes
+from src.estimation.blazepose.data.preprocessing import add_noise
 from src.utils import bbox_utils
-from src.utils.paths import HANDSEG_DATASET_DIR, LOGS_DIR, SIMPLE_DATASET_DIR
+from src.utils.paths import HANDSEG_DATASET_DIR, MODELS_DIR
 
 hyper_params = train_utils.get_hyper_params()
 model = build_blaze_face(hyper_params['detections_per_layer'], channels=1)
 print(model.summary(line_length=150))
-model.load_weights(LOGS_DIR.joinpath('20211120-142355/train_ckpts/weights.78.h5'))
+model.load_weights(MODELS_DIR.joinpath('blazehand.h5'))
 # dataset = TvhandDataset(TVHAND_DATASET_DIR, out_img_size=hyper_params['img_size'], batch_size=1)
 # dataset = SimpleBoxesDataset(SIMPLE_DATASET_DIR, train_size=0.8,
 #                             img_size=[hyper_params['img_size'], hyper_params['img_size']], batch_size=1)
 dataset = HandsegDatasetBboxes(
-            HANDSEG_DATASET_DIR,
-            train_size=0.8,
-            img_size=[hyper_params['img_size'], hyper_params['img_size']],
-            batch_size=1)
+    HANDSEG_DATASET_DIR,
+    train_size=0.8,
+    img_size=[hyper_params['img_size'], hyper_params['img_size']],
+    batch_size=1)
 prior_boxes = bbox_utils.generate_prior_boxes(hyper_params['feature_map_shapes'],
                                               hyper_params['aspect_ratios'])
 
@@ -41,14 +44,6 @@ for image, boxes in dataset.test_dataset:
     weighted_bboxes = bbox_utils.weighted_suppression(pred_scores[0], pred_bboxes[0],
                                                       max_total_size=2,
                                                       score_threshold=0.5)
-    # nmsed_boxes, nmsed_scores, nmsed_classes, valid_detections \
-    #     = tf.image.combined_non_max_suppression(
-    #     pred_bboxes[:, :, tf.newaxis, :], pred_scores,
-    #     max_total_size=2, max_output_size_per_class=2)
-    # denormalized_bboxes = bbox_utils.denormalize_bboxes(nmsed_boxes,
-    #                                                     hyper_params['img_size'],
-    #                                                     hyper_params['img_size'])
-    # # plot_predictions(image[0], denormalized_bboxes[0], None)
-    # # denormalized_bboxes = denormalized_bboxes[tf.newaxis, ...]
+
     draw_bboxes(image_preprocessed, weighted_bboxes[tf.newaxis, ...])
     pass

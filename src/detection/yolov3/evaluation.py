@@ -2,14 +2,13 @@ import numpy as np
 import tensorflow as tf
 from sklearn.metrics import precision_recall_curve
 
-import src.utils.bbox_utils
 import src.utils.plots as plots
-from src.datasets.handseg.dataset_bboxes import HandsegDatasetBboxes
-from src.detection.yolov3 import utils
+from src.datasets.handseg150k.dataset_bboxes import HandsegDatasetBboxes
 from src.detection.yolov3.architecture.loader import YoloLoader
 from src.detection.yolov3.preprocessing import DatasetPreprocessor
+from src.utils import bbox_utils
 from src.utils.imaging import RESIZE_MODE_CROP
-from src.utils.paths import DOCS_DIR, HANDSEG_DATASET_DIR, LOGS_DIR
+from src.utils.paths import DOCS_DIR, HANDSEG_DATASET_DIR, MODELS_DIR
 
 
 def evaluate(weights_path, batch_size=32):
@@ -28,7 +27,7 @@ def evaluate(weights_path, batch_size=32):
     """
     model = YoloLoader.load_from_weights(RESIZE_MODE_CROP, weights_path=weights_path, batch_size=batch_size)
     handseg = HandsegDatasetBboxes(HANDSEG_DATASET_DIR, train_size=0.99, batch_size=batch_size,
-                                   shuffle=False, model_input_shape=model.input_shape)
+                                   shuffle=False, )
     test_dataset_generator = DatasetPreprocessor(handseg.test_dataset,
                                                  model.input_shape, model.yolo_output_shapes, model.anchors)
 
@@ -105,8 +104,8 @@ def compute_iou(y_pred_pkl, y_true_pkl):
     pred_xywh = y_pred[..., 0:4]
     true_xywh = y_true[..., 0:4]
     true_conf = y_true[..., 4:5]
-    iou_for_all_boxes = src.utils.bbox_utils.bbox_ious(pred_xywh[:, :, :, np.newaxis, :],
-                                                  true_xywh[:, :, :, np.newaxis, :])
+    iou_for_all_boxes = bbox_utils.bbox_ious(pred_xywh[:, :, :, np.newaxis, :],
+                                             true_xywh[:, :, :, np.newaxis, :])
     iou_for_true_boxes = true_conf * iou_for_all_boxes
     ious_sum = tf.reduce_sum(iou_for_true_boxes)
     nonzero_ious = tf.math.count_nonzero(iou_for_true_boxes, dtype=tf.float32)
@@ -115,10 +114,8 @@ def compute_iou(y_pred_pkl, y_true_pkl):
 
 
 def evaluate_and_save(pred_file_path, true_file_path):
-    # Previous Tiny YOLOv3 model that uses padding
-    # weights_path = LOGS_DIR.joinpath("20210112-220731/train_ckpts/ckpt_9")
     # Tiny YOLOv3 model that uses crop
-    weights_path = LOGS_DIR.joinpath("20210315-143811/train_ckpts/weights.12.h5")
+    weights_path = MODELS_DIR.joinpath('yolo_crop_mode.h5')
 
     y_pred, y_true = evaluate(weights_path)
     np.save(pred_file_path, y_pred)

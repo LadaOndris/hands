@@ -10,7 +10,7 @@ from src.detection.yolov3.architecture.model import YoloModel
 from src.detection.yolov3.architecture.yolo_layer import YoloLayer
 from src.detection.yolov3depth.architecture.yolo_depth_layer import YoloDepthLayer
 from src.utils.imaging import RESIZE_MODE_CROP, RESIZE_MODE_PAD
-from src.utils.paths import LOGS_DIR, YOLO_CONFIG_FILE
+from src.utils.paths import LOGS_DIR, MODELS_DIR, YOLO_CONFIG_FILE
 
 
 class YoloLoader:
@@ -47,9 +47,9 @@ class YoloLoader:
         # because the models were trained with different preprocessing.
         if weights_path is None:
             if resize_mode == RESIZE_MODE_PAD:
-                weights_file = "20201016-125612/train_ckpts/ckpt_10"  # mode pad
+                raise ValueError("No weights exist for pad mode")
             elif resize_mode == RESIZE_MODE_CROP:
-                weights_file = "20210315-143811/train_ckpts/weights.12.h5"  # mode crop
+                weights_file = MODELS_DIR.joinpath('yolo_crop_mode.h5')
             else:
                 raise ValueError('Invalid resize option!')
             weights_path = LOGS_DIR.joinpath(weights_file)

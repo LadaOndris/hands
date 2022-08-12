@@ -36,7 +36,7 @@
         "initial_epoch": 0
     },
     "test": {
-        "pretrained_weights_path": "logs/20211026-211952/train_ckpts/weights.39.h5",
+        "weights_path": "",
         "pck_ref_points_idxs": [
             8,
             9

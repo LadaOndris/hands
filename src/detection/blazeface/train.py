@@ -11,7 +11,7 @@ from src.detection.blazeface.loss import BlazeFaceLoss
 from src.detection.blazeface.model import build_blaze_face
 from src.detection.blazeface.utils import train_utils
 from src.utils import bbox_utils
-from src.utils.paths import HANDSEG_DATASET_DIR, LOGS_DIR, SIMPLE_DATASET_DIR, TVHAND_DATASET_DIR
+from src.utils.paths import HANDSEG_DATASET_DIR, SIMPLE_DATASET_DIR, TVHAND_DATASET_DIR
 
 
 def get_dataset(name: str, hyper_params):
@@ -97,6 +97,4 @@ def train(dataset_name: str, weights_path: str = None, debug=False, **kwargs):
 
 
 if __name__ == "__main__":
-    weights = LOGS_DIR.joinpath('20210813-153226/train_ckpts/weights.01.h5')
-    weights = None
-    train('handseg', debug=True, batch_size=4, weights_path=weights)
+    train('handseg', debug=True, batch_size=4, weights_path=None)

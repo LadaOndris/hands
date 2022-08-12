@@ -7,7 +7,7 @@ from src.detection.yolov3.architecture.loader import YoloLoader
 from src.utils import bbox_utils
 from src.utils.config import TEST_YOLO_CONF_THRESHOLD
 from src.utils.imaging import resize_bilinear_nearest, RESIZE_MODE_CROP, tf_resize_image
-from src.utils.paths import LOGS_DIR, SAVED_MODELS_DIR
+from src.utils.paths import MODELS_DIR, SAVED_MODELS_DIR
 from src.system.components.base import Detector
 
 
@@ -18,7 +18,7 @@ class BlazehandDetector(Detector):
         self.num_detections = 1
         self.hyper_params = train_utils.get_hyper_params()
         self.model = build_blaze_face(self.hyper_params['detections_per_layer'], channels=self.channels)
-        self.model.load_weights(LOGS_DIR.joinpath('20211120-142355/train_ckpts/weights.78.h5'))
+        self.model.load_weights(MODELS_DIR.joinpath('blazehand.h5'))
         self.prior_boxes = bbox_utils.generate_prior_boxes(
             self.hyper_params['feature_map_shapes'],
             self.hyper_params['aspect_ratios'])
