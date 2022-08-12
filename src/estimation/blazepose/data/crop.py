@@ -1,7 +1,7 @@
 import tensorflow as tf
 
-from src.estimation.jgrp2o.preprocessing import extract_bboxes
-from src.estimation.jgrp2o.preprocessing_com import ComPreprocessor, crop_to_bounding_box
+from src.estimation.preprocessing import extract_bboxes
+from src.estimation.preprocessing_com import ComPreprocessor, crop_to_bounding_box
 from src.utils.camera import Camera
 
 

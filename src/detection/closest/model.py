@@ -3,6 +3,12 @@ import numpy as np
 
 
 class ClosestObjectDetector:
+    """
+    Iterates a depth image in layers beginning at depth 0.
+
+    In fact, this is not a good hand detector.
+    The idea of this detector might be useful for other applications.
+    """
 
     def __init__(self, min_depth=100, max_depth=1200, steps=22, min_contour_area=200, cube=200):
         self.min_depth = min_depth

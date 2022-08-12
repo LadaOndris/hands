@@ -5,8 +5,8 @@ import tensorflow_addons as tfa
 from src.datasets.bighand.dataset import BIGHAND_DATASET_DIR, BighandDataset
 from src.estimation.blazepose.data.crop import CropType, get_crop_center_point, get_crop_type
 from src.estimation.blazepose.data.rotate import rotate_tensor, rotation_angle_from_21_keypoints
-from src.estimation.jgrp2o.preprocessing import get_resize_coeffs, get_uv_offsets, resize_coords
-from src.estimation.jgrp2o.preprocessing_com import ComPreprocessor, crop_to_bcube
+from src.estimation.preprocessing import get_resize_coeffs, get_uv_offsets, resize_coords
+from src.estimation.preprocessing_com import ComPreprocessor, crop_to_bcube
 from src.utils.camera import Camera, CameraBighand
 from src.utils.imaging import normalize_to_range, resize_bilinear_nearest
 from src.utils.perlin import perlin_img_noise
