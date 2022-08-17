@@ -1,4 +1,4 @@
-from cv2 import cv2
+import cv2
 
 from src.system.components.base import ImageSource
 
