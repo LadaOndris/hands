@@ -23,7 +23,7 @@ class VideoImageSource(ImageSource):
                 self.previous_image = image
                 return image
             else:
-                raise RuntimeError("No more video frames.")
+                return None
         raise RuntimeError("VideoCapture is not opened.")
 
     def get_previous_image(self):

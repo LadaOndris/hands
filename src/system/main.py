@@ -26,6 +26,8 @@ class System:
                 start_time = time.time()
 
             image = self.image_source.get_new_image()
+            if image is None:
+                break
             prediction = self.predictor.predict(image)
 
             if prediction is None:
