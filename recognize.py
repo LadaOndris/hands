@@ -66,10 +66,13 @@ if __name__ == "__main__":
                         help='a video file path to be used as image source (default: None)')
     parser.add_argument('--camera', type=str, action='store', default=None,
                         help='the camera model in use for live capture (default: None)')
+    parser.add_argument('--measure-time', default=False, action='store_true')
+
     parser.add_argument('--error-threshold', type=int, action='store', default=150,
-                        help='the pose (JRE) threshold (default: 120)')
+                        help='the pose (JRE) threshold for RelativeDistanceGestureRecognizer (default: 120)')
     parser.add_argument('--orientation-threshold', type=int, action='store', default=90,
-                        help='the orientation threshold in angles (maximum: 90, default: 90)')
+                        help='the orientation threshold in angles for RelativeDistanceGestureRecognizer'
+                             ' (maximum: 90, default: 90)')
     args = parser.parse_args()
 
     if args.source == 'realsense':
@@ -100,5 +103,6 @@ if __name__ == "__main__":
     system = System(image_source=image_source,
                     predictor=predictor,
                     display=display,
-                    gesture_recognizer=regression_recognizer)
+                    gesture_recognizer=regression_recognizer,
+                    measure_time=args.measure_time)
     system.start()

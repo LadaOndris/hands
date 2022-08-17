@@ -63,6 +63,43 @@ The following images showcase the system's display:
 Appropriate coordinate predictor (color or depth) is selected depending on the selected camera.
 
 
+### Gesture Recognition on Verca
+
+**For demonstration**, the repository contains a video named `color_gestures.avi`.
+This recording can be used to test the gesture recognition on Verca.
+
+Make sure to do the following steps before running the actual example:
+* Set up a virtual environment (see the steps below)
+* Copy the repository to Verca---especially `recognize.py`, `color_gestures.avi`, `src`
+  and `datasets/usecase/color` directories 
+
+Run the following command to recognize gestures in the video and print the recognized
+gestures to the standard output:
+```
+python3 recognize.py color --source video --video color_gestures.avi --display stdout
+```
+
+It runs on CPU and takes about **95 ms** to process a single frame on Verca as opposed to 10 ms on my laptop.
+Use `--measure-time` to print the elapsed time for each frame to stdout.
+
+#### Setting up a virtual environment
+
+Setting up a virtual environment might require downloading packages using pip.
+Make sure the Verca has access to the internet.
+
+Create a new directory:
+```
+mkdir hands && cd hands
+```
+Create a virtual environment:
+```
+python -m venv ./
+```
+Install the required packages:
+```
+./bin/pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org numpy scikit-learn scikit-image opencv-python-headless protobuf==3.20.*
+```
+
 
 ### Preparation of gesture database
 
@@ -142,6 +179,10 @@ It is a good option when using **color** cameras.
 #### RealSenseCameraWrapper
 RealSenseCameraWrapper wraps **depth** and **color (infrared)** image streams
 as image sources from Intel RealSense cameras.
+
+#### VideoImageSource
+
+Reads image frames from a recording.
 
 
 ### CoordinatePredictor solutions
@@ -292,4 +333,3 @@ python3 recognize.py color --display opencv
     ├── metacentrum              # Scripts for training models in Metacentrum
     ├── system                   # Components of the system and the system itself
     └── utils                    # Camera, logs, plots, live capture, config
-
