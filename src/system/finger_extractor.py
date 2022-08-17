@@ -5,16 +5,16 @@ Finger extraction is not finished.
 import cv2 as cv
 import numpy as np
 
-from postoperations.calibration.calibrate import deproject_pixels, project_points, \
+from src.postoperations.calibration.calibrate import deproject_pixels, project_points, \
     transform_points_to_points
 from src.postoperations.extraction import ExtractedFingersDisplay, FingerExtractor
 from src.utils.camera import CameraBighand
-from system.components.detector import BlazehandDetector
-from system.components.displays.OpencvDisplay import OpencvDisplay
-from system.components.estimator import BlazeposeEstimator
-from system.components.image_sources.RealSenseCameraWrapper import RealSenseCameraWrapper
-from system.components.keypoints_to_rectangle import KeypointsToRectangleImpl
-from system.main import System
+from src.system.components.detector import BlazehandDetector
+from src.system.components.displays.OpencvDisplay import OpencvDisplay
+from src.system.components.estimator import BlazeposeEstimator
+from src.system.components.image_sources.RealSenseCameraWrapper import RealSenseCameraWrapper
+from src.system.components.keypoints_to_rectangle import KeypointsToRectangleImpl
+from src.system.main import System
 
 
 class CoordsConvertor:

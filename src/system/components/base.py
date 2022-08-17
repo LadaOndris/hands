@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 
 import numpy as np
 
-from gestures.gesture_acceptance_result import GestureRecognitionResult
+from src.gestures.gesture_acceptance_result import GestureRecognitionResult
 
 
 class ImageSource(ABC):

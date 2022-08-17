@@ -6,7 +6,7 @@ import numpy as np
 import pyrealsense2 as rs
 
 from src.utils.imaging import create_coord_pairs_np
-from system.components.image_sources.RealSenseCameraWrapper import RealSenseCameraWrapper
+from src.system.components.image_sources.RealSenseCameraWrapper import RealSenseCameraWrapper
 
 CIRCLES_COLOR = (220, 50, 30)
 CIRCLES_SIZE = 7

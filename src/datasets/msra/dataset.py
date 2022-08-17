@@ -7,7 +7,7 @@ import numpy as np
 import sklearn
 import tensorflow as tf
 
-from gestures.relative_distance.base import fingers_length, hand_orientation, joint_relation_errors, transform_orientation_to_2d, \
+from src.gestures.relative_distance.base import fingers_length, hand_orientation, joint_relation_errors, transform_orientation_to_2d, \
     vectors_angle
 from src.utils.camera import Camera
 from src.utils.paths import DOCS_DIR, MSRAHANDGESTURE_DATASET_DIR

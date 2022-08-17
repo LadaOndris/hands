@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from estimation.blazepose.data.preprocessing import add_noise
+from src.estimation.blazepose.data.preprocessing import add_noise
 from src.utils import bbox_utils
 
 

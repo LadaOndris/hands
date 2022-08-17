@@ -1,4 +1,4 @@
-from gestures.relative_distance.base import get_relative_distances
+from src.gestures.relative_distance.base import get_relative_distances
 import src.datasets.msra.dataset as msra_dataset
 import matplotlib.pyplot as plt
 from sklearn.metrics import precision_recall_curve

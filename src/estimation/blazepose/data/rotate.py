@@ -52,7 +52,7 @@ def vectors_angle(v1, v2):
 
     product = tf.matmul(v1, v2, transpose_b=True)
     angle = tf.math.acos(tf.clip_by_value(product, -1.0, 1.0))
-    print(angle)
+    return angle
 
 
 @tf.function

@@ -1,16 +1,10 @@
-from unittest import TestCase
-
+import numpy as np
 import tensorflow as tf
+
 from src.utils.imaging import average_nonzero_depth
 
 
 class TestImaging(tf.test.TestCase):
-
-    def test_average_nonzero_depth_invalid_param(self):
-        invalid_image_shape = tf.ones(shape=[10, 10, 1])
-
-        with self.assertRaises(TypeError):
-            average_nonzero_depth(images=invalid_image_shape)
 
     def test_average_nonzero_depth_correct_average(self):
         images = tf.ones(shape=[5, 10, 10, 1])
@@ -28,12 +22,11 @@ class TestImaging(tf.test.TestCase):
 
         self.assertEqual(tf.shape(actual_output), tf.shape(expected_shape))
 
-
     def test_average_nonzero_depth_with_zeros(self):
-        image = [1, 1, 0, 0]
+        image = np.array([1, 1, 0, 0], dtype=float)
         image = tf.convert_to_tensor(image)
-        images = tf.reshape(image, [1, 1, -1, 1]) # add dimensions
-        images = tf.tile(images, [10, 4, 1, 1]) # create multiples
+        images = tf.reshape(image, [1, 1, -1, 1])  # add dimensions
+        images = tf.tile(images, [10, 4, 1, 1])  # create multiples
 
         actual_output = average_nonzero_depth(images)
 

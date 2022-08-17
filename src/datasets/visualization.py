@@ -3,7 +3,7 @@ import numpy as np
 import seaborn as sns
 from sklearn.manifold import TSNE
 
-from gestures.relative_distance.base import _upper_tri, hand_pose_angles, scaled_distance_matrix, viewpoint_angles
+from src.gestures.relative_distance.base import _upper_tri, hand_pose_angles, scaled_distance_matrix, viewpoint_angles
 from src.datasets.msra.dataset import load_dataset
 
 

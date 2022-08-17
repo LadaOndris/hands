@@ -6,7 +6,7 @@ from src.utils.paths import BIGHAND_DATASET_DIR
 
 class TestBighandDatasetBoxes(tf.test.TestCase):
 
-    def test_build_dataset(self):
+    def test_values_in_correct_range(self):
         dataset = BighandDatasetBoxes(BIGHAND_DATASET_DIR, [256, 256])
         iterator = iter(dataset.train_dataset)
         image, boxes = next(iterator)

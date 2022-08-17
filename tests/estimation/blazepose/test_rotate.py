@@ -1,7 +1,8 @@
 import numpy as np
 import tensorflow as tf
 
-from src.estimation.blazepose.data.rotate import rotate_tensor, rotation_angle_from_21_keypoints, vectors_angle
+from src.estimation.blazepose.data.rotate import rotate_tensor, rotation_angle_from_21_keypoints, vectors_angle, \
+    vectors_angle_1d
 
 
 class Test(tf.test.TestCase):
@@ -36,7 +37,7 @@ class Test(tf.test.TestCase):
 
     def test_rotate_tensor_by_half_pi(self):
         tensor = tf.constant([1, 0], tf.float32)
-        expected_rotated_tensor = tf.constant([0, 1], tf.float32)
+        expected_rotated_tensor = tf.constant([0, -1], tf.float32)
 
         rotated_tensor = rotate_tensor(tensor, np.math.pi / 2)
 
@@ -104,7 +105,7 @@ class Test(tf.test.TestCase):
 
         # angle between the two vectors
         # (3,) x (3,) => scalar
-        angle = vectors_angle(v1, v2)
+        angle = vectors_angle_1d(v1, v2)
 
         self.assertAllEqual(angle, expected_angle)
 

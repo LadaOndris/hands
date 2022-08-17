@@ -5,8 +5,8 @@ import tensorflow as tf
 
 from src.estimation.blazepose.data.preprocessing import cube_to_box
 from src.estimation.blazepose.models.ModelCreator import ModelCreator
-from estimation.preprocessing import get_resize_coeffs
-from estimation.preprocessing_com import ComPreprocessor, crop_to_bcube, crop_to_bounding_box
+from src.estimation.preprocessing import get_resize_coeffs
+from src.estimation.preprocessing_com import ComPreprocessor, crop_to_bcube, crop_to_bounding_box
 from src.system.components.base import Estimator
 from src.utils.camera import Camera
 from src.utils.debugging import timing

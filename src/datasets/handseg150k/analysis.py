@@ -7,8 +7,8 @@ import tensorflow as tf
 from matplotlib import pyplot as plt
 from PIL import Image
 
-from datasets.handseg150k.dataset import HandsegDataset
-from datasets.handseg150k.dataset_bboxes import HandsegDatasetBboxes
+from src.datasets.handseg150k.dataset import HandsegDataset
+from src.datasets.handseg150k.dataset_bboxes import HandsegDatasetBboxes
 from src.utils.paths import HANDSEG_DATASET_DIR
 
 dirname = os.path.dirname(__file__)

@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-from estimation.preprocessing import extract_bboxes
+from src.estimation.preprocessing import extract_bboxes
 from src.system.components.base import KeypointsToRectangle
 
 

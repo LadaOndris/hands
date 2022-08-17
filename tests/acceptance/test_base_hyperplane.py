@@ -3,7 +3,7 @@ from unittest import TestCase
 import numpy as np
 import tensorflow as tf
 
-from gestures.relative_distance.base import fit_plane_through_hand
+from src.gestures.relative_distance.base import fit_plane_through_hand
 
 
 class TestBaseHyperplane(TestCase):

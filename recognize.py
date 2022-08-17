@@ -1,26 +1,15 @@
 import argparse
 
-import pyrealsense2 as rs
-
-from src.system.components.coordinate_predictors.MediapipeCoordinatePredictor import MediapipeCoordinatePredictor
-from src.system.components.coordinate_predictors.TrackingCoordinatePredictor import TrackingCoordinatePredictor
-from src.system.components.detector import BlazehandDetector
-from src.system.components.displays.OpencvDisplay import OpencvDisplay
-from src.system.components.estimator import BlazeposeEstimator
+from src.system.components.base import Display
 from src.system.components.gesture_recognizers.MLPGestureRecognizer import MLPGestureRecognizer
 from src.system.components.gesture_recognizers.RelativeDistanceGestureRecognizer import \
     RelativeDistanceGestureRecognizer
-from src.system.components.image_sources.DefaultVideoCaptureSource import DefaultVideoCaptureSource
-from src.system.components.image_sources.RealSenseCameraWrapper import RealSenseCameraWrapper
-from src.system.components.keypoints_to_rectangle import KeypointsToRectangleImpl
 from src.system.main import System
 from src.utils.camera import get_camera
-from src.system.components.base import Display
-from src.system.components.displays.EmptyDisplay import EmptyDisplay
-from src.system.components.displays.StdoutDisplay import StdoutDisplay
 
 
 def get_depth_filters():
+    import pyrealsense2 as rs
     decimation_filter = rs.decimation_filter()
     decimation_filter.set_option(rs.option.filter_magnitude, 1)
 
@@ -38,10 +27,13 @@ def get_depth_filters():
 
 def get_display(display_name: str) -> Display:
     if display_name == 'opencv':
+        from src.system.components.displays.OpencvDisplay import OpencvDisplay
         return OpencvDisplay()
     if display_name == 'stdout':
+        from src.system.components.displays.StdoutDisplay import StdoutDisplay
         return StdoutDisplay()
     if display_name == 'empty':
+        from src.system.components.displays.EmptyDisplay import EmptyDisplay
         return EmptyDisplay()
     raise NameError(f'Invalid display name: {display_name}')
 
@@ -61,10 +53,21 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.camera is None:
+
+        from src.system.components.coordinate_predictors.MediapipeCoordinatePredictor import \
+            MediapipeCoordinatePredictor
+        from src.system.components.image_sources.DefaultVideoCaptureSource import DefaultVideoCaptureSource
+
         # Uses color camera and MediaPipe tracker
         image_source = DefaultVideoCaptureSource()
         predictor = MediapipeCoordinatePredictor()
     else:
+        from src.system.components.image_sources.RealSenseCameraWrapper import RealSenseCameraWrapper
+        from src.system.components.coordinate_predictors.TrackingCoordinatePredictor import TrackingCoordinatePredictor
+        from src.system.components.detector import BlazehandDetector
+        from src.system.components.estimator import BlazeposeEstimator
+        from src.system.components.keypoints_to_rectangle import KeypointsToRectangleImpl
+
         # Uses depth camera and custom-trained neural nets
         realsense_wrapper = RealSenseCameraWrapper(enable_depth=True, enable_color=False,
                                                    filters=get_depth_filters())
