@@ -15,7 +15,6 @@ Python 3.7.10
 
 
 ## Installation
-<span style="color:red;">Regenerate and test in new env.</span>
 
 Install the required packages with:  
 ```
@@ -100,6 +99,8 @@ Install the required packages:
 ./bin/pip install --trusted-host pypi.org --trusted-host pypi.python.org --trusted-host files.pythonhosted.org numpy scikit-learn scikit-image opencv-python-headless protobuf==3.20.*
 ```
 
+It is possible that some further tweaking with packages may be required.
+
 
 ### Preparation of gesture database
 
@@ -159,9 +160,6 @@ The components are:
 
 Implementations of these classes can be found in `system/components` in their corresponding folders.
 The specific implementations are discussed below.
-
-<span style="color:red;">how to change which component is used.</span>
-
 
 ### ImageSource implementations
 
