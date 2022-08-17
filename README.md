@@ -59,7 +59,7 @@ The following images showcase the system's display:
     <img src="./docs/readme/opencv_display_-.png" alt="opencv_display_-" width="250"/>
 </p>
 
-Appropriate coordinate predictor (color or depth) is selected depending on the selected camera.
+Appropriate coordinate predictor (color or depth) is selected depending on the selected image source.
 
 
 ### Gesture Recognition on Verca
@@ -69,7 +69,7 @@ This recording can be used to test the gesture recognition on Verca.
 
 Make sure to do the following steps before running the actual example:
 * Set up a virtual environment (see the steps below)
-* Copy the repository to Verca---especially `recognize.py`, `color_gestures.avi`, `src`
+* Copy the repository to Verca—especially `recognize.py`, `color_gestures.avi`, `src`
   and `datasets/usecase/color` directories 
 
 Run the following command to recognize gestures in the video and print the recognized

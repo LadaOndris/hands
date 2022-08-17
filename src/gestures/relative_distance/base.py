@@ -37,18 +37,43 @@ def relative_distance_diff_single(hand1: np.ndarray, hand2: np.ndarray) -> np.nd
     return np.sum(np.abs(_upper_tri(diff)), axis=-1)
 
 
-def distance_matrix(a):
-    diff = np.empty(shape=(a.shape[0], 21, 21))
+def distance_matrix(hands: np.ndarray) -> np.ndarray:
+    """
+    Computes a distance matrix between each hands' keypoints.
 
-    for x in range(a.shape[0]):
+    Parameters
+    ----------
+    hands
+        3D array of shape (Batch, 21, 3)
+
+    Returns
+    -------
+    A matrix of distances of shape (Batch, 21, 21)
+    """
+    diff = np.empty(shape=(hands.shape[0], 21, 21))
+
+    for x in range(hands.shape[0]):
         # Subtract x,y,z coordinates
-        d = a[x, :, np.newaxis] - a[x, np.newaxis, :]
+        d = hands[x, :, np.newaxis] - hands[x, np.newaxis, :]
         # Compute Euclidean distance using Pythagoras
         diff[x, :, :] = np.sum(np.abs(d ** 2), axis=-1)
     return diff ** 0.5
 
 
-def scaled_distance_matrix(hand):
+def scaled_distance_matrix(hand: np.ndarray):
+    """
+    Computes a distance matrix between each hands' keypoints
+    and scales it by the length of fingers.
+
+    Parameters
+    ----------
+    hand
+        3D array of shape (Batch, 21, 3)
+
+    Returns
+    -------
+    A matrix of distances of shape (Batch, 21, 21)
+    """
     a = distance_matrix(hand).astype(np.float16)
     a *= get_scale_factors(a)[:, np.newaxis, np.newaxis]
     return a
