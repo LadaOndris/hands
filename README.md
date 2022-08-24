@@ -165,9 +165,7 @@ The specific implementations are discussed below.
 
 ImageSource is a component whose goal is to provide images as np.ndarray. 
 For example, it can read images from a camera or files. The repository 
-contains two image sources—DefaultVideoCaptureSource
-and RealSenseCameraWrapper—both providing
-camera frames.
+contains several image sources.
 
 #### DefaultVideoCaptureSource
 
