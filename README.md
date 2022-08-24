@@ -331,3 +331,10 @@ python3 recognize.py color --display opencv
     ├── metacentrum              # Scripts for training models in Metacentrum
     ├── system                   # Components of the system and the system itself
     └── utils                    # Camera, logs, plots, live capture, config
+
+## Training models
+
+The training of the Blazehand detector and the Blazepose estimator is
+briefly described in the following sections.
+
+### Training Blazehand
