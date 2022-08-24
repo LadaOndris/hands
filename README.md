@@ -338,3 +338,35 @@ The training of the Blazehand detector and the Blazepose estimator is
 briefly described in the following sections.
 
 ### Training Blazehand
+
+The original model is called Blazeface but a few modifications 
+were made for this project.
+
+Run `src/blazeface/utils/train.py` to train the model.
+Use `handseg` dataset for training (the default argument). 
+
+### Trainin Blazepose
+
+Training the Blazepose model is a bit more complicated. 
+The model is composed of two main parts. The first one produces **heatmaps**, 
+while the second one uses the heatmap information together with intermediate 
+features to produce coordinates (this part is called **regression**).
+
+Training these parts separately results in more accurate model. 
+You can run the `src/estimation/blazepose/trainers/trainer.py` with the 
+corresponding arguments.
+Use `--type heatmap` or '--type regress' to train only one of the stages,
+or use `--type both` to train one after the other automatically.
+
+#### Dataset 
+
+The trainer requires the BigHand dataset. Note that after downloading the 
+dataset (or some parts of it), certain scripts **must be run** to alter the dataset.
+
+Some annotation files in the original dataset contain annotations
+for files that do not exist.
+Run `src/datasets/bighand/check_files_existence.py` to find these
+non-existence file references and manually delete them.
+
+Run `src/datasets/bighand/amend_annotations.py` to generate better
+annotation files that are more suitable for using in a `tf.data` pipeline.
