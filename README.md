@@ -352,21 +352,22 @@ The model is composed of two main parts. The first one produces **heatmaps**,
 while the second one uses the heatmap information together with intermediate 
 features to produce coordinates (this part is called **regression**).
 
-Training these parts separately results in more accurate model. 
+Training these parts separately results in a more accurate model. 
 You can run the `src/estimation/blazepose/trainers/trainer.py` with the 
 corresponding arguments.
-Use `--type heatmap` or '--type regress' to train only one of the stages,
+Use `--type heatmap` or `--type regress` to train only one of the stages,
 or use `--type both` to train one after the other automatically.
 
 #### Dataset 
 
 The trainer requires the BigHand dataset. Note that after downloading the 
-dataset (or some parts of it), certain scripts **must be run** to alter the dataset.
+dataset (or some parts of it), certain scripts **must be run** to alter
+the dataset.
 
 Some annotation files in the original dataset contain annotations
 for files that do not exist.
 Run `src/datasets/bighand/check_files_existence.py` to find these
-non-existence file references and manually delete them.
+non-existent file references and manually delete them.
 
 Run `src/datasets/bighand/amend_annotations.py` to generate better
-annotation files that are more suitable for using in a `tf.data` pipeline.
+annotation files that are more suitable for a `tf.data` pipeline.
